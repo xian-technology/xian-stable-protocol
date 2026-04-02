@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xian-stable-protocol"
+version = "0.1.0"
+description = "A Xian-native overcollateralized stable-vault reference protocol."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["xian-tech-contracting>=1.0.1,<2"]
+
+[dependency-groups]
+dev = ["pytest>=9.0.2,<10"]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.uv.sources]
+xian-tech-contracting = { git = "https://github.com/xian-technology/xian-contracting", branch = "main" }
