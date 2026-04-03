@@ -28,10 +28,10 @@ def protocol(tmp_path):
     client = ContractingClient(storage_home=storage_home)
     client.flush()
 
-    committee = submit_contract(
+    members = submit_contract(
         client,
-        "committee",
-        "committee.s.py",
+        "members",
+        "members_compat.s.py",
         {
             "initial_members": ["alice", "bob", "carol"],
             "initial_weights": {
@@ -42,17 +42,19 @@ def protocol(tmp_path):
             "governor_address": "governor",
         },
     )
-    protocol_governance = submit_contract(
+    governance = submit_contract(
         client,
-        "protocol_governance",
-        "protocol_governance.s.py",
+        "governance",
+        "governance_compat.s.py",
         {
-            "membership_contract_name": "committee",
+            "membership_contract_name": "members",
             "approval_threshold_numerator": 2,
             "approval_threshold_denominator": 3,
             "proposal_expiry_days": 7,
-            "execution_delay_seconds": 86400,
-            "emergency_execution_delay_seconds": 3600,
+            "min_patch_delay_blocks": 20,
+            "emergency_threshold_numerator": 1,
+            "emergency_threshold_denominator": 1,
+            "emergency_patch_delay_blocks": 5,
         },
     )
     stable_token = submit_contract(
@@ -170,8 +172,8 @@ def protocol(tmp_path):
 
     return SimpleNamespace(
         client=client,
-        committee=committee,
-        protocol_governance=protocol_governance,
+        members=members,
+        governance=governance,
         stable_token=stable_token,
         collateral_token=collateral_token,
         reserve_token=reserve_token,

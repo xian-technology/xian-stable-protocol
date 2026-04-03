@@ -7,7 +7,6 @@
 - add deployment scripts for the current Xian stack
 - add integration tests against a live `xian-abci` node
 - add a stronger oracle sourcing and attestation model on top of reporter quorum
-- decide how protocol governance should relate to Xian's broader governance system
 - add keeper automation and operational runbooks for auctions and oracle reporting
 - design a cross-vault collateral redemption path if the protocol wants one
 

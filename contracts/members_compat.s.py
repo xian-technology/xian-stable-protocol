@@ -113,6 +113,11 @@ def total_member_weight():
 
 
 @export
+def member_count():
+    return len(current_members())
+
+
+@export
 def start_governance_transfer(new_governor: str):
     require_governor()
     assert isinstance(new_governor, str) and new_governor != "", "new_governor must be non-empty."

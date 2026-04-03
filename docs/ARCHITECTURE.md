@@ -8,18 +8,12 @@ into both a savings pool and an explicit surplus buffer.
 
 ## Components
 
-### `committee`
+### `members` / `governance`
 
-- weighted membership registry
-- simple source of governance voting power
-- intentionally narrow so it can be swapped for a richer membership contract later
-
-### `protocol_governance`
-
-- timelocked contract-call governance
-- weighted yes-vote threshold
-- proposal expiry, queueing, and delayed execution
-- intended owner of protocol administration once bootstrap is complete
+- production ownership is meant to live with Xian's chain-level `members` and `governance` contracts
+- `members` supplies the weighted membership interface
+- `governance` executes protocol contract calls once proposals reach threshold
+- the repo includes compatibility harnesses for standalone local tests, but the target runtime is the real chain governance system
 
 ### `stable_token`
 
@@ -62,12 +56,12 @@ into both a savings pool and an explicit surplus buffer.
 
 ## Major Redesign Decisions
 
-### 1. Governance is explicit and delayed
+### 1. Governance is explicit and chain-native
 
 The old project called itself a DAO but the contracts were really operator-owned.
-This redesign makes governance an actual protocol component. Bootstrap still
-starts from a human governor, but control can be transferred to a weighted,
-timelocked governance contract that executes real contract calls.
+This redesign makes governance an explicit chain integration point. Bootstrap
+still starts from a human governor, but production ownership is meant to move to
+Xian's `governance` contract backed by `members`, not to an isolated protocol DAO.
 
 ### 2. Debt is tracked as shares, not stored debt snapshots
 
@@ -98,7 +92,7 @@ cleaner.
 ## Limitations
 
 - oracle security is still committee-governed reporter based
-- governance is protocol-local, not yet wired into Xian's broader chain governance
+- governance still depends on the current Xian governance surface and its contract-call model, so future chain-governance changes need to be tracked
 - auctions are English auctions and still need better keeper ergonomics
 - there is no native collateral redemption path across vault types
 - there are no invariant or fuzz tests yet

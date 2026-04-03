@@ -8,7 +8,7 @@ It keeps the original high-level idea:
 - vault debt accrues a stability fee
 - protocol fees can be routed into a savings pool
 - unsafe vaults can be liquidated quickly or auctioned
-- governance changes execute through a timelocked weighted committee
+- governance changes are intended to execute through Xian's `members` and `governance` contracts
 - a peg stability module offers direct mint and redeem flows against reserve assets
 
 But it is intentionally **not** a literal port. The contracts were redesigned for
@@ -24,10 +24,10 @@ current Xian / Contracting patterns:
 
 ## Contracts
 
-- [contracts/committee.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/committee.s.py)
-  A simple weighted membership contract used by governance.
-- [contracts/protocol_governance.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/protocol_governance.s.py)
-  A timelocked contract-call governance layer for protocol administration.
+- [contracts/members_compat.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/members_compat.s.py)
+  A lightweight compatibility harness for the `members` membership interface used in standalone tests.
+- [contracts/governance_compat.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/governance_compat.s.py)
+  A standalone compatibility harness mirroring Xian's contract-call governance flow.
 - [contracts/stable_token.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/stable_token.s.py)
   A controller-minted fungible token intended for the protocol stable asset.
 - [contracts/oracle.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/oracle.s.py)
@@ -41,10 +41,10 @@ current Xian / Contracting patterns:
 
 ## Deployment Flow
 
-Canonical contract names used by the tests and examples:
+Canonical production contract names:
 
-- `committee`
-- `protocol_governance`
+- `members`
+- `governance`
 - `stable_token`
 - `oracle`
 - `savings`
@@ -53,18 +53,17 @@ Canonical contract names used by the tests and examples:
 
 Suggested deployment order:
 
-1. Deploy `committee`
-2. Deploy `protocol_governance`
-3. Deploy `stable_token`
-4. Deploy reserve-asset token contracts
-5. Deploy `oracle`
-6. Deploy `savings`
-7. Deploy `vaults`
-8. Deploy `psm`
-9. Grant controller rights on `stable_token` to `vaults` and `psm`
-10. Configure oracle reporters and publish feed prices
-11. Add vault types on `vaults`
-12. Transfer protocol contract governance to `protocol_governance`
+1. Use the chain's existing `members` and `governance` contracts
+2. Deploy `stable_token`
+3. Deploy reserve-asset token contracts
+4. Deploy `oracle`
+5. Deploy `savings`
+6. Deploy `vaults`
+7. Deploy `psm`
+8. Grant controller rights on `stable_token` to `vaults` and `psm`
+9. Configure oracle reporters and publish feed prices
+10. Add vault types on `vaults`
+11. Transfer protocol contract governance to `governance`
 
 ## Testing
 
@@ -78,7 +77,7 @@ uv run --python 3.14 pytest -q
 The tests use the local `contracting` runtime and cover:
 
 - stable token controller and allowance flows
-- weighted governance with timelocked execution
+- weighted governance using Xian governance semantics
 - oracle reporter, quorum, medianization, and freshness behavior
 - savings share accounting
 - vault creation, closing, fee accrual, collateral withdrawals, and debt-share accounting
