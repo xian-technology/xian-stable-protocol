@@ -2,34 +2,56 @@
 
 ## Goal
 
-The protocol issues a stable asset against overcollateralized positions and
-routes protocol fee income into a savings pool.
+The protocol issues a stable asset against overcollateralized positions, offers
+direct reserve-backed mint and redeem flows, and routes protocol fee income
+into both a savings pool and an explicit surplus buffer.
 
 ## Components
+
+### `committee`
+
+- weighted membership registry
+- simple source of governance voting power
+- intentionally narrow so it can be swapped for a richer membership contract later
+
+### `protocol_governance`
+
+- timelocked contract-call governance
+- weighted yes-vote threshold
+- proposal expiry, queueing, and delayed execution
+- intended owner of protocol administration once bootstrap is complete
 
 ### `stable_token`
 
 - standard fungible token
 - governor-managed controller allowlist
-- intended controller: `vaults`
+- intended controllers: `vaults` and `psm`
 - users can burn their own balance
 
 ### `oracle`
 
-- governor-managed reporter set
-- per-asset prices
-- per-asset freshness threshold
-- intentionally simple, but structured enough to replace later
+- governor-managed reporter allowlist
+- per-asset quorum and freshness configuration
+- medianized price selection across fresh reports
+- still a committee-governed oracle, not a trustless feed
+
+### `psm`
+
+- peg stability module for reserve-backed mint and redeem flows
+- symmetric 1:1 style conversions with configurable mint and redeem fees
+- reserve fees route directly to treasury
+- provides a clean redeem path without touching CDP collateral
 
 ### `vaults`
 
 - vault type registry
 - user vault lifecycle
-- linear stability fee accrual on outstanding principal
-- fast liquidation when collateral can still cover debt plus bonus
-- auction liquidation when collateral cannot cover the fast path cleanly
+- debt-share accounting with per-type rate accumulators
+- partial liquidation when a vault can be restored safely
+- auction liquidation when partial cure cannot restore the vault
+- auction cure and auction cancellation when the vault becomes safe again
 - fee routing to `savings`, `treasury`, or `governor`
-- bad debt accounting on auction shortfall
+- explicit surplus buffer, bad debt accounting, and recapitalization hooks
 
 ### `savings`
 
@@ -40,35 +62,44 @@ routes protocol fee income into a savings pool.
 
 ## Major Redesign Decisions
 
-### 1. No fake DAO wrapper
+### 1. Governance is explicit and delayed
 
 The old project called itself a DAO but the contracts were really operator-owned.
-This redesign is explicit about that. There is a `governor` hook and transfer
-process, but no pretend governance layer inside the protocol contracts.
+This redesign makes governance an actual protocol component. Bootstrap still
+starts from a human governor, but control can be transferred to a weighted,
+timelocked governance contract that executes real contract calls.
 
-### 2. Honest bad debt accounting
+### 2. Debt is tracked as shares, not stored debt snapshots
 
-The old design tried to self-equalize debt pools through mutable ratios. This
-version records `bad_debt` per vault type when auction proceeds do not cover the
-vault debt. That is cleaner and easier to reason about.
+The old prototype mixed stored debt and rate assumptions at the vault level.
+This redesign keeps per-type rate accumulators and per-vault debt shares. That
+gives cleaner fee accrual, cleaner accounting around auctions, and safer vault
+introspection.
 
-### 3. Share-based savings instead of bespoke stake math
+### 3. Honest bad debt accounting and surplus handling
+
+The protocol records bad debt explicitly when auctions do not clear the full
+vault debt. Fee income can accumulate partly in a surplus buffer, that buffer
+can cover bad debt directly, and external recapitalizers can inject stable
+assets without mutating protocol state by hand.
+
+### 4. Share-based savings instead of bespoke stake math
 
 The old staking logic was a custom interest-bearing token with ad hoc pricing.
 This version uses a standard share vault: deposits mint shares and fee inflows
 raise the share price.
 
-### 4. Safe elapsed-time math
+### 5. The peg layer is a separate module
 
-The old contracts used Python's `timedelta.seconds` semantics, which break
-across day boundaries. Xian's current runtime types already expose total elapsed
-seconds through `Timedelta.seconds`, so this redesign uses that runtime-native
-value directly instead of reconstructing elapsed time by hand.
+The PSM is not merged into `vaults`. That keeps CDP risk and reserve-backed peg
+operations separate, which makes both the accounting and governance boundary
+cleaner.
 
 ## Limitations
 
-- oracle security is still manual reporter based
-- stability fee accrual is linear, not a global compounding rate accumulator
-- auctions are English auctions, not Dutch or keeper-optimized
-- there is no active peg module, PSM, or redemption queue
-- there is no automated surplus / deficit recapitalization mechanism yet
+- oracle security is still committee-governed reporter based
+- governance is protocol-local, not yet wired into Xian's broader chain governance
+- auctions are English auctions and still need better keeper ergonomics
+- there is no native collateral redemption path across vault types
+- there are no invariant or fuzz tests yet
+- there are no deployment scripts or live-network integration tests yet

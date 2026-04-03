@@ -2,22 +2,18 @@
 
 ## Still Needed Before Production
 
-- replace the manual reporter oracle with a stronger feed design
-- add a formal governance integration contract instead of plain `governor`
-- move from per-vault linear fee accrual to a cleaner global rate accumulator
-- add partial liquidation support
-- add auction cancellation / cure flows when a vault becomes safe again
-- add a surplus buffer and explicit bad-debt resolution path
 - define a standard stable token symbol / branding / metadata strategy
 - add invariant-heavy tests and fuzzing around fee accrual and auction settlement
 - add deployment scripts for the current Xian stack
 - add integration tests against a live `xian-abci` node
+- add a stronger oracle sourcing and attestation model on top of reporter quorum
+- decide how protocol governance should relate to Xian's broader governance system
+- add keeper automation and operational runbooks for auctions and oracle reporting
+- design a cross-vault collateral redemption path if the protocol wants one
 
 ## Nice-to-Have Extensions
 
-- multiple oracle reporters with medianization
 - safety shutdown / emergency pause module
 - vault-type specific fee destinations
-- keeper helper contracts or off-chain bots
 - portfolio / accounting views optimized for BDS indexing
-
+- richer reserve management for the PSM
