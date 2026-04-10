@@ -96,4 +96,4 @@ cleaner.
 - auctions are English auctions and still need better keeper ergonomics
 - there is no native collateral redemption path across vault types
 - there are no invariant or fuzz tests yet
-- there are no deployment scripts or live-network integration tests yet
+- there are no live-network integration tests yet

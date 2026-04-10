@@ -12,6 +12,7 @@ dependencies = ["xian-tech-contracting>=1.0.1,<2"]
 
 [dependency-groups]
 dev = ["pytest>=9.0.2,<10"]
+deploy = ["xian-tech-py>=0.4.11,<0.5"]
 
 [tool.setuptools]
 py-modules = []

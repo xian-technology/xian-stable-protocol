@@ -4,7 +4,6 @@
 
 - define a standard stable token symbol / branding / metadata strategy
 - add invariant-heavy tests and fuzzing around fee accrual and auction settlement
-- add deployment scripts for the current Xian stack
 - add integration tests against a live `xian-abci` node
 - add a stronger oracle sourcing and attestation model on top of reporter quorum
 - add keeper automation and operational runbooks for auctions and oracle reporting
