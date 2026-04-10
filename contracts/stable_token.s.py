@@ -71,6 +71,7 @@ def seed(
     token_name: str,
     token_symbol: str,
     token_logo_url: str = "",
+    token_logo_svg: str = "",
     token_website: str = "",
     initial_supply: Any = 0,
     initial_holder: str = None,
@@ -79,6 +80,7 @@ def seed(
     assert isinstance(token_name, str) and token_name != "", "token_name must be non-empty."
     assert isinstance(token_symbol, str) and token_symbol != "", "token_symbol must be non-empty."
     assert isinstance(token_logo_url, str), "token_logo_url must be a string."
+    assert isinstance(token_logo_svg, str), "token_logo_svg must be a string."
     assert isinstance(token_website, str), "token_website must be a string."
     assert isinstance(initial_supply, (int, float, decimal)), "initial_supply must be numeric."
     assert initial_supply >= 0, "initial_supply must be non-negative."
@@ -99,6 +101,7 @@ def seed(
     metadata["token_name"] = token_name
     metadata["token_symbol"] = token_symbol
     metadata["token_logo_url"] = token_logo_url
+    metadata["token_logo_svg"] = token_logo_svg
     metadata["token_website"] = token_website
 
 

@@ -66,6 +66,7 @@ def seed(
     token_name: str = "Stable Savings Share",
     token_symbol: str = "xSAVE",
     token_logo_url: str = "",
+    token_logo_svg: str = "",
     token_website: str = "",
     governor_address: str = None,
 ):
@@ -73,6 +74,7 @@ def seed(
     assert isinstance(token_name, str) and token_name != "", "token_name must be non-empty."
     assert isinstance(token_symbol, str) and token_symbol != "", "token_symbol must be non-empty."
     assert isinstance(token_logo_url, str), "token_logo_url must be a string."
+    assert isinstance(token_logo_svg, str), "token_logo_svg must be a string."
     assert isinstance(token_website, str), "token_website must be a string."
 
     resolved_governor = governor_address
@@ -87,6 +89,7 @@ def seed(
     metadata["token_name"] = token_name
     metadata["token_symbol"] = token_symbol
     metadata["token_logo_url"] = token_logo_url
+    metadata["token_logo_svg"] = token_logo_svg
     metadata["token_website"] = token_website
 
 
