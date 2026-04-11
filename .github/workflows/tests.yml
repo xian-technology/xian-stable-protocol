@@ -8,11 +8,31 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out xian-stable-protocol
+        uses: actions/checkout@v4
+        with:
+          path: xian-stable-protocol
+
+      - name: Check out xian-contracting
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/xian-contracting
+          ref: main
+          path: xian-contracting
+
+      - name: Check out xian-py
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/xian-py
+          ref: main
+          path: xian-py
+
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.14"
       - name: Sync dependencies
+        working-directory: xian-stable-protocol
         run: uv sync --locked --group dev
       - name: Run tests
+        working-directory: xian-stable-protocol
         run: uv run pytest -q
