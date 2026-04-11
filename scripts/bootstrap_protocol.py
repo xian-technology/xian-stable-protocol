@@ -153,9 +153,7 @@ def _budget_kwargs(callable_obj: Any, value: int) -> dict[str, int]:
     parameters = inspect.signature(callable_obj).parameters
     if "chi" in parameters:
         return {"chi": value}
-    if "stamps" in parameters:
-        return {"stamps": value}
-    raise RuntimeError("write method does not expose chi/stamps parameter")
+    raise RuntimeError("write method does not expose chi parameter")
 
 
 def _bool_state(
