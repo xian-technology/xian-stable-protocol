@@ -11,8 +11,8 @@ redeem_fee_bps = Variable()
 paused = Variable()
 
 MintedEvent = LogEvent(
-    event="Minted",
-    params={
+    "Minted",
+    {
         "account": {"type": str, "idx": True},
         "reserve_in": (int, float, decimal),
         "stable_out": (int, float, decimal),
@@ -21,8 +21,8 @@ MintedEvent = LogEvent(
 )
 
 RedeemedEvent = LogEvent(
-    event="Redeemed",
-    params={
+    "Redeemed",
+    {
         "account": {"type": str, "idx": True},
         "stable_in": (int, float, decimal),
         "reserve_out": (int, float, decimal),
@@ -31,31 +31,31 @@ RedeemedEvent = LogEvent(
 )
 
 FeesUpdatedEvent = LogEvent(
-    event="FeesUpdated",
-    params={
+    "FeesUpdated",
+    {
         "mint_fee_bps": int,
         "redeem_fee_bps": int,
     },
 )
 
 PausedUpdatedEvent = LogEvent(
-    event="PausedUpdated",
-    params={
+    "PausedUpdated",
+    {
         "paused": bool,
     },
 )
 
 GovernanceTransferStartedEvent = LogEvent(
-    event="GovernanceTransferStarted",
-    params={
+    "GovernanceTransferStarted",
+    {
         "current_governor": {"type": str, "idx": True},
         "proposed_governor": {"type": str, "idx": True},
     },
 )
 
 GovernanceTransferredEvent = LogEvent(
-    event="GovernanceTransferred",
-    params={
+    "GovernanceTransferred",
+    {
         "previous_governor": {"type": str, "idx": True},
         "new_governor": {"type": str, "idx": True},
     },
@@ -122,7 +122,7 @@ def fee_destination():
 
 
 def reserve_balance():
-    return reserve_token().balance_of(account=ctx.this)
+    return reserve_token().balance_of(address=ctx.this)
 
 
 @export

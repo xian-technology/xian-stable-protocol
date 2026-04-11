@@ -19,8 +19,8 @@ proposed_governor = Variable()
 paused = Variable()
 
 VaultTypeAddedEvent = LogEvent(
-    event="VaultTypeAdded",
-    params={
+    "VaultTypeAdded",
+    {
         "vault_type_id": {"type": int, "idx": True},
         "collateral_contract": {"type": str, "idx": True},
         "oracle_key": {"type": str, "idx": True},
@@ -28,8 +28,8 @@ VaultTypeAddedEvent = LogEvent(
 )
 
 VaultOpenedEvent = LogEvent(
-    event="VaultOpened",
-    params={
+    "VaultOpened",
+    {
         "vault_id": {"type": int, "idx": True},
         "owner": {"type": str, "idx": True},
         "vault_type_id": {"type": int, "idx": True},
@@ -39,8 +39,8 @@ VaultOpenedEvent = LogEvent(
 )
 
 CollateralChangedEvent = LogEvent(
-    event="CollateralChanged",
-    params={
+    "CollateralChanged",
+    {
         "vault_id": {"type": int, "idx": True},
         "owner": {"type": str, "idx": True},
         "delta": (int, float, decimal),
@@ -50,8 +50,8 @@ CollateralChangedEvent = LogEvent(
 )
 
 DebtChangedEvent = LogEvent(
-    event="DebtChanged",
-    params={
+    "DebtChanged",
+    {
         "vault_id": {"type": int, "idx": True},
         "payer": {"type": str, "idx": True},
         "direction": {"type": str, "idx": True},
@@ -61,8 +61,8 @@ DebtChangedEvent = LogEvent(
 )
 
 VaultClosedEvent = LogEvent(
-    event="VaultClosed",
-    params={
+    "VaultClosed",
+    {
         "vault_id": {"type": int, "idx": True},
         "owner": {"type": str, "idx": True},
         "closer": {"type": str, "idx": True},
@@ -70,8 +70,8 @@ VaultClosedEvent = LogEvent(
 )
 
 LiquidationEvent = LogEvent(
-    event="Liquidation",
-    params={
+    "Liquidation",
+    {
         "vault_id": {"type": int, "idx": True},
         "liquidator": {"type": str, "idx": True},
         "debt_repaid": (int, float, decimal),
@@ -81,8 +81,8 @@ LiquidationEvent = LogEvent(
 )
 
 AuctionOpenedEvent = LogEvent(
-    event="AuctionOpened",
-    params={
+    "AuctionOpened",
+    {
         "vault_id": {"type": int, "idx": True},
         "owner": {"type": str, "idx": True},
         "debt": (int, float, decimal),
@@ -91,8 +91,8 @@ AuctionOpenedEvent = LogEvent(
 )
 
 AuctionBidPlacedEvent = LogEvent(
-    event="AuctionBidPlaced",
-    params={
+    "AuctionBidPlaced",
+    {
         "vault_id": {"type": int, "idx": True},
         "bidder": {"type": str, "idx": True},
         "bid_amount": (int, float, decimal),
@@ -101,8 +101,8 @@ AuctionBidPlacedEvent = LogEvent(
 )
 
 AuctionCancelledEvent = LogEvent(
-    event="AuctionCancelled",
-    params={
+    "AuctionCancelled",
+    {
         "vault_id": {"type": int, "idx": True},
         "owner": {"type": str, "idx": True},
         "reason": str,
@@ -110,8 +110,8 @@ AuctionCancelledEvent = LogEvent(
 )
 
 AuctionSettledEvent = LogEvent(
-    event="AuctionSettled",
-    params={
+    "AuctionSettled",
+    {
         "vault_id": {"type": int, "idx": True},
         "winner": {"type": str, "idx": True},
         "winning_bid": (int, float, decimal),
@@ -120,8 +120,8 @@ AuctionSettledEvent = LogEvent(
 )
 
 AuctionRefundClaimedEvent = LogEvent(
-    event="AuctionRefundClaimed",
-    params={
+    "AuctionRefundClaimed",
+    {
         "vault_id": {"type": int, "idx": True},
         "claimer": {"type": str, "idx": True},
         "amount": (int, float, decimal),
@@ -129,16 +129,16 @@ AuctionRefundClaimedEvent = LogEvent(
 )
 
 BadDebtCoveredEvent = LogEvent(
-    event="BadDebtCovered",
-    params={
+    "BadDebtCovered",
+    {
         "vault_type_id": {"type": int, "idx": True},
         "amount": (int, float, decimal),
     },
 )
 
 RecapitalizedEvent = LogEvent(
-    event="Recapitalized",
-    params={
+    "Recapitalized",
+    {
         "vault_type_id": {"type": int, "idx": True},
         "payer": {"type": str, "idx": True},
         "amount": (int, float, decimal),
@@ -148,8 +148,8 @@ RecapitalizedEvent = LogEvent(
 )
 
 SurplusSweptEvent = LogEvent(
-    event="SurplusSwept",
-    params={
+    "SurplusSwept",
+    {
         "vault_type_id": {"type": int, "idx": True},
         "destination": {"type": str, "idx": True},
         "amount": (int, float, decimal),
@@ -157,16 +157,16 @@ SurplusSweptEvent = LogEvent(
 )
 
 GovernanceTransferStartedEvent = LogEvent(
-    event="GovernanceTransferStarted",
-    params={
+    "GovernanceTransferStarted",
+    {
         "current_governor": {"type": str, "idx": True},
         "proposed_governor": {"type": str, "idx": True},
     },
 )
 
 GovernanceTransferredEvent = LogEvent(
-    event="GovernanceTransferred",
-    params={
+    "GovernanceTransferred",
+    {
         "previous_governor": {"type": str, "idx": True},
         "new_governor": {"type": str, "idx": True},
     },

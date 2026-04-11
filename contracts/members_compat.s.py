@@ -5,8 +5,8 @@ governor = Variable()
 proposed_governor = Variable()
 
 MemberUpdatedEvent = LogEvent(
-    event="MemberUpdated",
-    params={
+    "MemberUpdated",
+    {
         "account": {"type": str, "idx": True},
         "enabled": bool,
         "weight": int,
@@ -14,16 +14,16 @@ MemberUpdatedEvent = LogEvent(
 )
 
 GovernanceTransferStartedEvent = LogEvent(
-    event="GovernanceTransferStarted",
-    params={
+    "GovernanceTransferStarted",
+    {
         "current_governor": {"type": str, "idx": True},
         "proposed_governor": {"type": str, "idx": True},
     },
 )
 
 GovernanceTransferredEvent = LogEvent(
-    event="GovernanceTransferred",
-    params={
+    "GovernanceTransferred",
+    {
         "previous_governor": {"type": str, "idx": True},
         "new_governor": {"type": str, "idx": True},
     },

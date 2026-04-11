@@ -8,8 +8,8 @@ proposed_governor = Variable()
 total_supply = Variable()
 
 TransferEvent = LogEvent(
-    event="Transfer",
-    params={
+    "Transfer",
+    {
         "from": {"type": str, "idx": True},
         "to": {"type": str, "idx": True},
         "amount": (int, float, decimal),
@@ -17,8 +17,8 @@ TransferEvent = LogEvent(
 )
 
 ApproveEvent = LogEvent(
-    event="Approve",
-    params={
+    "Approve",
+    {
         "owner": {"type": str, "idx": True},
         "spender": {"type": str, "idx": True},
         "amount": (int, float, decimal),
@@ -26,40 +26,40 @@ ApproveEvent = LogEvent(
 )
 
 ControllerUpdatedEvent = LogEvent(
-    event="ControllerUpdated",
-    params={
+    "ControllerUpdated",
+    {
         "account": {"type": str, "idx": True},
         "enabled": bool,
     },
 )
 
 MintEvent = LogEvent(
-    event="Mint",
-    params={
+    "Mint",
+    {
         "to": {"type": str, "idx": True},
         "amount": (int, float, decimal),
     },
 )
 
 BurnEvent = LogEvent(
-    event="Burn",
-    params={
+    "Burn",
+    {
         "from": {"type": str, "idx": True},
         "amount": (int, float, decimal),
     },
 )
 
 GovernanceTransferStartedEvent = LogEvent(
-    event="GovernanceTransferStarted",
-    params={
+    "GovernanceTransferStarted",
+    {
         "current_governor": {"type": str, "idx": True},
         "proposed_governor": {"type": str, "idx": True},
     },
 )
 
 GovernanceTransferredEvent = LogEvent(
-    event="GovernanceTransferred",
-    params={
+    "GovernanceTransferred",
+    {
         "previous_governor": {"type": str, "idx": True},
         "new_governor": {"type": str, "idx": True},
     },
@@ -103,6 +103,7 @@ def seed(
     metadata["token_logo_url"] = token_logo_url
     metadata["token_logo_svg"] = token_logo_svg
     metadata["token_website"] = token_website
+    metadata["total_supply"] = initial_supply
 
 
 def require_governor():
@@ -166,8 +167,8 @@ def total_supply_of():
 
 
 @export
-def balance_of(account: str):
-    return balances[account]
+def balance_of(address: str):
+    return balances[address]
 
 
 @export
@@ -222,6 +223,7 @@ def mint(amount: Any, to: str):
 
     balances[to] += amount
     total_supply.set(total_supply.get() + amount)
+    metadata["total_supply"] = total_supply.get()
     MintEvent({"to": to, "amount": amount})
     TransferEvent({"from": "mint", "to": to, "amount": amount})
 
@@ -234,6 +236,7 @@ def burn(amount: Any):
 
     balances[ctx.caller] -= amount
     total_supply.set(total_supply.get() - amount)
+    metadata["total_supply"] = total_supply.get()
     BurnEvent({"from": ctx.caller, "amount": amount})
     TransferEvent({"from": ctx.caller, "to": "burn", "amount": amount})
 
@@ -242,4 +245,5 @@ def burn(amount: Any):
 def change_metadata(key: str, value: Any):
     require_governor()
     assert isinstance(key, str) and key != "", "key must be non-empty."
+    assert key != "total_supply", "total_supply is managed by the contract."
     metadata[key] = value

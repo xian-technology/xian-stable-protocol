@@ -21,8 +21,8 @@ KIND_STATE_PATCH = "state_patch"
 KIND_CONTRACT_CALL = "contract_call"
 
 ProposalSubmittedEvent = LogEvent(
-    event="ProposalSubmitted",
-    params={
+    "ProposalSubmitted",
+    {
         "proposal_id": {"type": int, "idx": True},
         "kind": {"type": str, "idx": True},
         "proposer": {"type": str, "idx": True},
@@ -31,8 +31,8 @@ ProposalSubmittedEvent = LogEvent(
 )
 
 ProposalVotedEvent = LogEvent(
-    event="ProposalVoted",
-    params={
+    "ProposalVoted",
+    {
         "proposal_id": {"type": int, "idx": True},
         "voter": {"type": str, "idx": True},
         "vote": {"type": str, "idx": True},
@@ -42,8 +42,8 @@ ProposalVotedEvent = LogEvent(
 )
 
 ProposalApprovedEvent = LogEvent(
-    event="ProposalApproved",
-    params={
+    "ProposalApproved",
+    {
         "proposal_id": {"type": int, "idx": True},
         "kind": {"type": str, "idx": True},
         "approver": {"type": str, "idx": True},
@@ -51,8 +51,8 @@ ProposalApprovedEvent = LogEvent(
 )
 
 ProposalExecutedEvent = LogEvent(
-    event="ProposalExecuted",
-    params={
+    "ProposalExecuted",
+    {
         "proposal_id": {"type": int, "idx": True},
         "target_contract": {"type": str, "idx": True},
         "target_function": {"type": str, "idx": True},
@@ -61,8 +61,8 @@ ProposalExecutedEvent = LogEvent(
 )
 
 StatePatchScheduledEvent = LogEvent(
-    event="StatePatchScheduled",
-    params={
+    "StatePatchScheduled",
+    {
         "proposal_id": {"type": int, "idx": True},
         "patch_id": {"type": str, "idx": True},
         "activation_height": {"type": int, "idx": True},

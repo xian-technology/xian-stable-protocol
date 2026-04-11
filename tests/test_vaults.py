@@ -27,8 +27,8 @@ def test_create_and_close_vault_routes_fees_to_savings_and_surplus(protocol):
     assert returned_collateral == 100
     assert protocol.savings.total_assets() == pytest.approx(4)
     assert vault_type["surplus_buffer"] == pytest.approx(1)
-    assert protocol.stable_token.balance_of(account="alice") == pytest.approx(5)
-    assert protocol.collateral_token.balance_of(account="alice") == pytest.approx(1_000)
+    assert protocol.stable_token.balance_of(address="alice") == pytest.approx(5)
+    assert protocol.collateral_token.balance_of(address="alice") == pytest.approx(1_000)
     assert vault_type["live_principal_outstanding"] == 0
 
 
@@ -65,7 +65,7 @@ def test_fast_liquidation_performs_partial_cure(protocol):
     assert vault["auction_open"] is False
     assert float(vault["debt"]) == pytest.approx(33.33333333333333)
     assert float(vault["collateralization_bps"]) == pytest.approx(15000)
-    assert protocol.collateral_token.balance_of(account="bob") == pytest.approx(
+    assert protocol.collateral_token.balance_of(address="bob") == pytest.approx(
         1000 + collateral_paid
     )
 
@@ -168,7 +168,7 @@ def test_auction_extends_records_bad_debt_and_allows_loser_refund(protocol):
     assert settlement["winning_bid"] == 45
     assert settlement["bad_debt"] == pytest.approx(55)
     assert refund == 40
-    assert protocol.collateral_token.balance_of(account="carol") == pytest.approx(1_100)
+    assert protocol.collateral_token.balance_of(address="carol") == pytest.approx(1_100)
     assert (
         protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)["bad_debt"]
         == pytest.approx(55)

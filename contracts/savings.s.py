@@ -8,8 +8,8 @@ governor = Variable()
 proposed_governor = Variable()
 
 DepositEvent = LogEvent(
-    event="Deposit",
-    params={
+    "Deposit",
+    {
         "account": {"type": str, "idx": True},
         "assets": (int, float, decimal),
         "shares": (int, float, decimal),
@@ -17,8 +17,8 @@ DepositEvent = LogEvent(
 )
 
 WithdrawEvent = LogEvent(
-    event="Withdraw",
-    params={
+    "Withdraw",
+    {
         "account": {"type": str, "idx": True},
         "assets": (int, float, decimal),
         "shares": (int, float, decimal),
@@ -26,8 +26,8 @@ WithdrawEvent = LogEvent(
 )
 
 TransferEvent = LogEvent(
-    event="Transfer",
-    params={
+    "Transfer",
+    {
         "from": {"type": str, "idx": True},
         "to": {"type": str, "idx": True},
         "amount": (int, float, decimal),
@@ -35,8 +35,8 @@ TransferEvent = LogEvent(
 )
 
 ApproveEvent = LogEvent(
-    event="Approve",
-    params={
+    "Approve",
+    {
         "owner": {"type": str, "idx": True},
         "spender": {"type": str, "idx": True},
         "amount": (int, float, decimal),
@@ -44,16 +44,16 @@ ApproveEvent = LogEvent(
 )
 
 GovernanceTransferStartedEvent = LogEvent(
-    event="GovernanceTransferStarted",
-    params={
+    "GovernanceTransferStarted",
+    {
         "current_governor": {"type": str, "idx": True},
         "proposed_governor": {"type": str, "idx": True},
     },
 )
 
 GovernanceTransferredEvent = LogEvent(
-    event="GovernanceTransferred",
-    params={
+    "GovernanceTransferred",
+    {
         "previous_governor": {"type": str, "idx": True},
         "new_governor": {"type": str, "idx": True},
     },
@@ -91,6 +91,7 @@ def seed(
     metadata["token_logo_url"] = token_logo_url
     metadata["token_logo_svg"] = token_logo_svg
     metadata["token_website"] = token_website
+    metadata["total_supply"] = 0
 
 
 def stable_token():
@@ -109,7 +110,7 @@ def current_share_supply():
 
 
 def current_total_assets():
-    return stable_token().balance_of(account=ctx.this)
+    return stable_token().balance_of(address=ctx.this)
 
 
 @export
@@ -157,8 +158,8 @@ def total_assets():
 
 
 @export
-def balance_of(account: str):
-    return balances[account]
+def balance_of(address: str):
+    return balances[address]
 
 
 @export
@@ -205,6 +206,7 @@ def deposit(assets: Any):
     stable_token().transfer_from(amount=assets, to=ctx.this, main_account=ctx.caller)
     balances[ctx.caller] += shares
     share_supply.set(current_share_supply() + shares)
+    metadata["total_supply"] = current_share_supply()
 
     DepositEvent({"account": ctx.caller, "assets": assets, "shares": shares})
     TransferEvent({"from": "mint", "to": ctx.caller, "amount": shares})
@@ -220,6 +222,7 @@ def withdraw(shares: Any):
     assets = preview_redeem(shares=shares)
     balances[ctx.caller] -= shares
     share_supply.set(current_share_supply() - shares)
+    metadata["total_supply"] = current_share_supply()
     stable_token().transfer(amount=assets, to=ctx.caller)
 
     WithdrawEvent({"account": ctx.caller, "assets": assets, "shares": shares})
@@ -269,4 +272,5 @@ def transfer_from(amount: Any, to: str, main_account: str):
 def change_metadata(key: str, value: Any):
     require_governor()
     assert isinstance(key, str) and key != "", "key must be non-empty."
+    assert key != "total_supply", "total_supply is managed by the contract."
     metadata[key] = value

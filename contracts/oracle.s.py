@@ -12,8 +12,8 @@ governor = Variable()
 proposed_governor = Variable()
 
 PriceReportedEvent = LogEvent(
-    event="PriceReported",
-    params={
+    "PriceReported",
+    {
         "asset": {"type": str, "idx": True},
         "reporter": {"type": str, "idx": True},
         "price": (int, float, decimal),
@@ -22,16 +22,16 @@ PriceReportedEvent = LogEvent(
 )
 
 ReporterUpdatedEvent = LogEvent(
-    event="ReporterUpdated",
-    params={
+    "ReporterUpdated",
+    {
         "account": {"type": str, "idx": True},
         "enabled": bool,
     },
 )
 
 AssetConfigUpdatedEvent = LogEvent(
-    event="AssetConfigUpdated",
-    params={
+    "AssetConfigUpdated",
+    {
         "asset": {"type": str, "idx": True},
         "min_reporters": int,
         "max_age_seconds": int,
@@ -39,16 +39,16 @@ AssetConfigUpdatedEvent = LogEvent(
 )
 
 GovernanceTransferStartedEvent = LogEvent(
-    event="GovernanceTransferStarted",
-    params={
+    "GovernanceTransferStarted",
+    {
         "current_governor": {"type": str, "idx": True},
         "proposed_governor": {"type": str, "idx": True},
     },
 )
 
 GovernanceTransferredEvent = LogEvent(
-    event="GovernanceTransferred",
-    params={
+    "GovernanceTransferred",
+    {
         "previous_governor": {"type": str, "idx": True},
         "new_governor": {"type": str, "idx": True},
     },

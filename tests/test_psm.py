@@ -12,9 +12,9 @@ def test_psm_mint_and_redeem_apply_fees(protocol):
     assert mint_quote["fee"] == pytest.approx(1)
     assert redeem_quote["reserve_out"] == pytest.approx(49.75)
     assert redeem_quote["fee"] == pytest.approx(0.25)
-    assert protocol.stable_token.balance_of(account="alice") == pytest.approx(49)
-    assert protocol.reserve_token.balance_of(account="alice") == pytest.approx(949.75)
-    assert protocol.reserve_token.balance_of(account="treasury") == pytest.approx(1.25)
+    assert protocol.stable_token.balance_of(address="alice") == pytest.approx(49)
+    assert protocol.reserve_token.balance_of(address="alice") == pytest.approx(949.75)
+    assert protocol.reserve_token.balance_of(address="treasury") == pytest.approx(1.25)
     assert protocol.psm.get_state()["reserve_balance"] == pytest.approx(49)
 
 
