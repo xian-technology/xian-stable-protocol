@@ -21,4 +21,5 @@ py-modules = []
 testpaths = ["tests"]
 
 [tool.uv.sources]
-xian-tech-contracting = { git = "https://github.com/xian-technology/xian-contracting", branch = "main" }
+xian-tech-contracting = { path = "../xian-contracting", editable = true }
+xian-tech-py = { path = "../xian-py", editable = true }

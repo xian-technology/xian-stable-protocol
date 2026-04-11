@@ -9,7 +9,7 @@ It keeps the original high-level idea:
 - vault debt accrues a stability fee
 - protocol fees can be routed into a savings pool
 - unsafe vaults can be liquidated quickly or auctioned
-- governance changes execute through Xian's `members` and `governance`
+- governance changes execute through Xian's `masternodes` and `governance`
   contracts
 - a peg stability module offers direct mint and redeem flows against reserve
   assets
@@ -46,7 +46,7 @@ entrypoint. The starter flows point here for deployment and wiring.
 ## Contracts
 
 - [contracts/members_compat.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/members_compat.s.py)
-  A lightweight compatibility harness for the `members` membership interface
+  A lightweight compatibility harness for the membership interface
   used in standalone tests.
 - [contracts/governance_compat.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/governance_compat.s.py)
   A standalone compatibility harness mirroring Xian's contract-call governance
@@ -77,14 +77,18 @@ uv run python scripts/bootstrap_protocol.py
 
 The bootstrap script:
 
-- deploys `stable_token`, `oracle`, `savings`, `vaults`, and `psm` if they are
-  missing
-- optionally deploys sample `collateral_token` and `reserve_token` contracts
-  for local or staging use
-- enables `vaults` and `psm` as stable-token controllers
+- deploys `con_stable_token`, `con_oracle`, `con_savings`, `con_vaults`, and
+  `con_psm` if they are missing
+- optionally deploys sample `con_collateral_token` and
+  `con_reserve_token` contracts for local or staging use
+- enables `con_vaults` and `con_psm` as stable-token controllers
 - configures oracle reporters and an initial price feed
-- sets the required fee-routing addresses on `vaults` and `psm`
+- sets the required fee-routing addresses on `con_vaults` and `con_psm`
 - seeds a default vault type only when one does not already exist
+- uses explicit chi budgets for writes, so it does not depend on readonly
+  simulation being enabled on the target node
+- validates that user-deployed contract names use the current chain-required
+  `con_` prefix before submitting anything
 
 During bootstrap, the operator wallet must match the configured initial
 governor. After handoff starts, further governance-managed changes should go
@@ -109,39 +113,47 @@ The protocol is not correctly wired unless fee destinations are configured.
 These are the minimum required relationships:
 
 ```python
-stable_token.set_controller(account='vaults', enabled=True)
-stable_token.set_controller(account='psm', enabled=True)
+con_stable_token.set_controller(account='con_vaults', enabled=True)
+con_stable_token.set_controller(account='con_psm', enabled=True)
 
-vaults.set_savings_contract(target_contract='savings')
-vaults.set_treasury_address(address='treasury')
-psm.set_treasury_address(address='treasury')
+con_vaults.set_savings_contract(target_contract='con_savings')
+con_vaults.set_treasury_address(address='treasury')
+con_psm.set_treasury_address(address='treasury')
 ```
 
-If `vaults` has no `savings_contract` and no `treasury_address`, or `psm` has
-no `treasury_address`, fees fall back to the current governor. That is valid
-contract behavior but not the intended production setup.
+If `con_vaults` has no `savings_contract` and no `treasury_address`, or
+`con_psm` has no `treasury_address`, fees fall back to the current governor.
+That is valid contract behavior but not the intended production setup.
 
 The public operational surface also includes the governance-managed functions
 that materially affect day-2 operations:
 
-- `vaults.set_vault_type_auction_config(...)`
-- `vaults.set_vault_type_surplus_buffer_bps(...)`
-- `vaults.set_savings_contract(...)`
-- `vaults.set_treasury_address(...)`
-- `vaults.claim_refund(...)`
-- `vaults.liquidate_fast(...)`
-- `psm.set_treasury_address(...)`
-- `psm.get_state()`
+- `con_vaults.set_vault_type_auction_config(...)`
+- `con_vaults.set_vault_type_surplus_buffer_bps(...)`
+- `con_vaults.set_savings_contract(...)`
+- `con_vaults.set_treasury_address(...)`
+- `con_vaults.claim_refund(...)`
+- `con_vaults.liquidate_fast(...)`
+- `con_psm.set_treasury_address(...)`
+- `con_psm.get_state()`
 
 ## Canonical Production Contract Names
 
-- `members`
+Current Xian submission rules require user-deployed contracts to start with
+`con_`. The bootstrap defaults therefore use:
+
+- `masternodes`
 - `governance`
-- `stable_token`
-- `oracle`
-- `savings`
-- `vaults`
-- `psm`
+- `con_stable_token`
+- `con_oracle`
+- `con_savings`
+- `con_vaults`
+- `con_psm`
+
+For local or staging sample assets, the bootstrap also defaults to:
+
+- `con_collateral_token`
+- `con_reserve_token`
 
 ## Testing
 
@@ -172,8 +184,9 @@ This repository tracks the current `xian-contracting` `main` branch via
 intentional: the protocol targets the latest Xian Contracting event and runtime
 behavior, which may move ahead of the last PyPI release.
 
-The optional `deploy` dependency group tracks `xian-py` so the bootstrap script
-can exercise the same public SDK surface that the rest of the Xian stack uses.
+The optional `deploy` dependency group resolves `xian-py` from the sibling
+workspace checkout so the bootstrap script exercises the same SDK revision that
+the rest of the Xian stack is using.
 
 ## Status
 

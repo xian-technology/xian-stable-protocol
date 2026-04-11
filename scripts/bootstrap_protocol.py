@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import os
 import sys
@@ -15,7 +16,14 @@ from xian_py.models import TransactionSubmission
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS_DIR = ROOT / "contracts"
 DEFAULT_GOVERNANCE_CONTRACT = "governance"
-DEFAULT_MEMBERSHIP_CONTRACT = "members"
+DEFAULT_MEMBERSHIP_CONTRACT = "masternodes"
+DEFAULT_STABLE_TOKEN_CONTRACT = "con_stable_token"
+DEFAULT_ORACLE_CONTRACT = "con_oracle"
+DEFAULT_SAVINGS_CONTRACT = "con_savings"
+DEFAULT_VAULTS_CONTRACT = "con_vaults"
+DEFAULT_PSM_CONTRACT = "con_psm"
+DEFAULT_COLLATERAL_CONTRACT = "con_collateral_token"
+DEFAULT_RESERVE_CONTRACT = "con_reserve_token"
 
 
 @dataclass(frozen=True)
@@ -60,6 +68,8 @@ class BootstrapConfig:
     bid_extension_seconds: int
     mint_fee_bps: int
     redeem_fee_bps: int
+    deploy_chi: int
+    tx_chi: int
 
 
 def _env_str(name: str, default: str) -> str:
@@ -116,6 +126,15 @@ def _contract_source(file_name: str) -> str:
     return (CONTRACTS_DIR / file_name).read_text(encoding="utf-8")
 
 
+def _require_user_contract_name(label: str, value: str) -> None:
+    if value.startswith("con_"):
+        return
+    raise RuntimeError(
+        f"{label} must start with 'con_' on current Xian networks; got "
+        f"{value!r}."
+    )
+
+
 def _ensure_submission_succeeded(
     submission: TransactionSubmission, action: str
 ) -> TransactionSubmission:
@@ -130,10 +149,37 @@ def _ensure_submission_succeeded(
     return submission
 
 
-def _send(contract: Any, function: str, action: str, **kwargs: Any) -> str:
+def _budget_kwargs(callable_obj: Any, value: int) -> dict[str, int]:
+    parameters = inspect.signature(callable_obj).parameters
+    if "chi" in parameters:
+        return {"chi": value}
+    if "stamps" in parameters:
+        return {"stamps": value}
+    raise RuntimeError("write method does not expose chi/stamps parameter")
+
+
+def _bool_state(
+    client: Xian,
+    contract_name: str,
+    variable: str,
+    *keys: object,
+) -> bool:
+    value = client.get_state(contract_name, variable, *keys)
+    return value is True
+
+
+def _send(
+    contract: Any,
+    function: str,
+    action: str,
+    *,
+    chi: int,
+    **kwargs: Any,
+) -> str:
     result = _ensure_submission_succeeded(
         contract.send(
             function,
+            **_budget_kwargs(contract.send, chi),
             mode="checktx",
             wait_for_tx=True,
             **kwargs,
@@ -169,19 +215,32 @@ def _load_config(wallet: Wallet) -> BootstrapConfig:
         ),
         stable_token_symbol=_env_str("XIAN_STABLE_TOKEN_SYMBOL", "xUSD"),
         stable_token_contract_name=_env_str(
-            "XIAN_STABLE_TOKEN_CONTRACT", "stable_token"
+            "XIAN_STABLE_TOKEN_CONTRACT",
+            DEFAULT_STABLE_TOKEN_CONTRACT,
         ),
-        oracle_contract_name=_env_str("XIAN_STABLE_ORACLE_CONTRACT", "oracle"),
+        oracle_contract_name=_env_str(
+            "XIAN_STABLE_ORACLE_CONTRACT",
+            DEFAULT_ORACLE_CONTRACT,
+        ),
         savings_contract_name=_env_str(
-            "XIAN_STABLE_SAVINGS_CONTRACT", "savings"
+            "XIAN_STABLE_SAVINGS_CONTRACT",
+            DEFAULT_SAVINGS_CONTRACT,
         ),
-        vaults_contract_name=_env_str("XIAN_STABLE_VAULTS_CONTRACT", "vaults"),
-        psm_contract_name=_env_str("XIAN_STABLE_PSM_CONTRACT", "psm"),
+        vaults_contract_name=_env_str(
+            "XIAN_STABLE_VAULTS_CONTRACT",
+            DEFAULT_VAULTS_CONTRACT,
+        ),
+        psm_contract_name=_env_str(
+            "XIAN_STABLE_PSM_CONTRACT",
+            DEFAULT_PSM_CONTRACT,
+        ),
         collateral_contract_name=_env_str(
-            "XIAN_STABLE_COLLATERAL_CONTRACT", "collateral_token"
+            "XIAN_STABLE_COLLATERAL_CONTRACT",
+            DEFAULT_COLLATERAL_CONTRACT,
         ),
         reserve_contract_name=_env_str(
-            "XIAN_STABLE_RESERVE_CONTRACT", "reserve_token"
+            "XIAN_STABLE_RESERVE_CONTRACT",
+            DEFAULT_RESERVE_CONTRACT,
         ),
         collateral_token_name=_env_str(
             "XIAN_STABLE_COLLATERAL_NAME", "Collateral Token"
@@ -239,7 +298,37 @@ def _load_config(wallet: Wallet) -> BootstrapConfig:
         ),
         mint_fee_bps=_env_int("XIAN_STABLE_PSM_MINT_FEE_BPS", 100),
         redeem_fee_bps=_env_int("XIAN_STABLE_PSM_REDEEM_FEE_BPS", 50),
+        deploy_chi=_env_int("XIAN_STABLE_DEPLOY_CHI", 500_000),
+        tx_chi=_env_int("XIAN_STABLE_TX_CHI", 200_000),
     )
+
+
+def _validate_config(
+    config: BootstrapConfig,
+    *,
+    skip_sample_tokens: bool,
+) -> None:
+    for label, name in (
+        ("XIAN_STABLE_TOKEN_CONTRACT", config.stable_token_contract_name),
+        ("XIAN_STABLE_ORACLE_CONTRACT", config.oracle_contract_name),
+        ("XIAN_STABLE_SAVINGS_CONTRACT", config.savings_contract_name),
+        ("XIAN_STABLE_VAULTS_CONTRACT", config.vaults_contract_name),
+        ("XIAN_STABLE_PSM_CONTRACT", config.psm_contract_name),
+    ):
+        _require_user_contract_name(label, name)
+    if skip_sample_tokens:
+        return
+    for label, name in (
+        (
+            "XIAN_STABLE_COLLATERAL_CONTRACT",
+            config.collateral_contract_name,
+        ),
+        (
+            "XIAN_STABLE_RESERVE_CONTRACT",
+            config.reserve_contract_name,
+        ),
+    ):
+        _require_user_contract_name(label, name)
 
 
 def _deploy_contract(
@@ -248,6 +337,7 @@ def _deploy_contract(
     name: str,
     source_file: str,
     args: dict[str, Any],
+    chi: int,
 ) -> tuple[Any, bool]:
     existing_source = client.get_contract(name)
     if existing_source is None:
@@ -256,6 +346,7 @@ def _deploy_contract(
                 name=name,
                 code=_contract_source(source_file),
                 args=args,
+                **_budget_kwargs(client.submit_contract, chi),
                 mode="checktx",
                 wait_for_tx=True,
             ),
@@ -287,6 +378,7 @@ def _ensure_sample_token(
     supply: int | Decimal,
     governor_address: str,
     initial_holder: str,
+    deploy_chi: int,
 ) -> Any:
     contract, _ = _deploy_contract(
         client,
@@ -299,48 +391,67 @@ def _ensure_sample_token(
             "initial_holder": initial_holder,
             "governor_address": governor_address,
         },
+        chi=deploy_chi,
     )
     return contract
 
 
 def _maybe_set_controller(
+    client: Xian,
+    stable_token_contract_name: str,
     stable_token: Any,
     *,
     account: str,
     enabled: bool,
+    chi: int,
 ) -> str | None:
-    current = stable_token.call("is_controller", account=account)
+    current = _bool_state(
+        client,
+        stable_token_contract_name,
+        "controllers",
+        account,
+    )
     if current is enabled:
         return None
     return _send(
         stable_token,
         "set_controller",
         f"set controller {account}={enabled}",
+        chi=chi,
         account=account,
         enabled=enabled,
     )
 
 
-def _ensure_oracle_state(oracle: Any, config: BootstrapConfig) -> list[str]:
+def _ensure_oracle_state(
+    client: Xian, oracle: Any, config: BootstrapConfig
+) -> list[str]:
     tx_hashes: list[str] = []
     tx_hashes.append(
         _send(
             oracle,
             "set_asset_config",
             f"configure oracle asset {config.asset_key}",
+            chi=config.tx_chi,
             asset=config.asset_key,
             min_reporters_required=config.min_reporters_required,
             max_price_age_seconds=config.max_price_age_seconds,
         )
     )
     for reporter in config.oracle_reporters:
-        if oracle.call("is_reporter", account=reporter):
+        if _bool_state(
+            client,
+            config.oracle_contract_name,
+            "reporters",
+            reporter,
+        ):
             continue
         tx_hashes.append(
             _send(
                 oracle,
                 "set_reporter",
                 f"enable oracle reporter {reporter}",
+                chi=config.tx_chi,
                 account=reporter,
                 enabled=True,
             )
@@ -351,6 +462,7 @@ def _ensure_oracle_state(oracle: Any, config: BootstrapConfig) -> list[str]:
                 oracle,
                 "submit_price",
                 f"submit oracle price for {config.asset_key}",
+                chi=config.tx_chi,
                 asset=config.asset_key,
                 price=config.asset_price,
             )
@@ -368,24 +480,28 @@ def _ensure_fee_destinations(
             vaults,
             "set_savings_contract",
             "set vaults savings contract",
+            chi=config.tx_chi,
             target_contract=config.savings_contract_name,
         ),
         _send(
             vaults,
             "set_treasury_address",
             "set vaults treasury address",
+            chi=config.tx_chi,
             address=config.treasury_address,
         ),
         _send(
             psm,
             "set_treasury_address",
             "set psm treasury address",
+            chi=config.tx_chi,
             address=config.treasury_address,
         ),
         _send(
             psm,
             "set_fees",
             "set psm fees",
+            chi=config.tx_chi,
             mint_fee_bps_value=config.mint_fee_bps,
             redeem_fee_bps_value=config.redeem_fee_bps,
         ),
@@ -409,6 +525,7 @@ def _ensure_default_vault_type(
         vaults,
         "add_vault_type",
         "add default vault type",
+        chi=config.tx_chi,
         collateral_contract_name=config.collateral_contract_name,
         oracle_key=config.asset_key,
         min_collateral_ratio_bps=config.min_collateral_ratio_bps,
@@ -430,21 +547,79 @@ def _ensure_default_vault_type(
 
 
 def _maybe_start_governance_handoff(
-    contracts: dict[str, Any], config: BootstrapConfig
+    client: Xian,
+    contracts: dict[str, Any],
+    config: BootstrapConfig,
 ) -> list[str]:
     tx_hashes: list[str] = []
     for contract_name, contract in contracts.items():
-        if contract.call("governor_of") == config.governance_contract_name:
+        current_governor = client.get_state(contract_name, "governor")
+        if current_governor == config.governance_contract_name:
             continue
         tx_hashes.append(
             _send(
                 contract,
                 "start_governance_transfer",
                 f"start governance transfer for {contract_name}",
+                chi=config.tx_chi,
                 new_governor=config.governance_contract_name,
             )
         )
     return tx_hashes
+
+
+def _snapshot_vault_type(
+    client: Xian,
+    contract_name: str,
+    vault_type_id: int,
+) -> dict[str, Any]:
+    fields = (
+        "active",
+        "collateral_contract",
+        "oracle_key",
+        "min_collateral_ratio_bps",
+        "liquidation_ratio_bps",
+        "liquidation_bonus_bps",
+        "partial_liquidation_target_ratio_bps",
+        "debt_ceiling",
+        "min_debt",
+        "stability_fee_bps",
+        "auction_duration_seconds",
+        "min_bid_increment_bps",
+        "extension_window_seconds",
+        "bid_extension_seconds",
+        "surplus_buffer_bps",
+        "rate_accumulator",
+        "normalized_debt_total",
+        "principal_outstanding",
+        "auction_debt_locked",
+        "auction_principal_locked",
+        "fees_distributed",
+        "surplus_buffer",
+        "bad_debt",
+    )
+    return {
+        field: client.get_state(contract_name, "vault_types", vault_type_id, field)
+        for field in fields
+    }
+
+
+def _snapshot_psm_state(client: Xian, contract_name: str) -> dict[str, Any]:
+    return {
+        "stable_token_contract": client.get_state(
+            contract_name, "stable_token_contract"
+        ),
+        "reserve_token_contract": client.get_state(
+            contract_name, "reserve_token_contract"
+        ),
+        "governor": client.get_state(contract_name, "governor"),
+        "treasury_address": client.get_state(
+            contract_name, "treasury_address"
+        ),
+        "mint_fee_bps": client.get_state(contract_name, "mint_fee_bps"),
+        "redeem_fee_bps": client.get_state(contract_name, "redeem_fee_bps"),
+        "paused": client.get_state(contract_name, "paused"),
+    }
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -476,6 +651,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     wallet = _require_wallet()
     config = _load_config(wallet)
+    _validate_config(config, skip_sample_tokens=args.skip_sample_tokens)
     if config.governor_address != config.operator_address:
         raise RuntimeError(
             "The bootstrap wallet must match XIAN_STABLE_GOVERNOR while "
@@ -517,6 +693,7 @@ def main(argv: list[str] | None = None) -> int:
                 "initial_holder": config.operator_address,
                 "governor_address": config.governor_address,
             },
+            chi=config.deploy_chi,
         )
 
         if args.skip_sample_tokens:
@@ -537,6 +714,7 @@ def main(argv: list[str] | None = None) -> int:
                 supply=config.sample_token_supply,
                 governor_address=config.governor_address,
                 initial_holder=config.operator_address,
+                deploy_chi=config.deploy_chi,
             )
             _ensure_sample_token(
                 client,
@@ -546,6 +724,7 @@ def main(argv: list[str] | None = None) -> int:
                 supply=config.sample_token_supply,
                 governor_address=config.governor_address,
                 initial_holder=config.operator_address,
+                deploy_chi=config.deploy_chi,
             )
 
         oracle, _ = _deploy_contract(
@@ -553,6 +732,7 @@ def main(argv: list[str] | None = None) -> int:
             name=config.oracle_contract_name,
             source_file="oracle.s.py",
             args={"governor_address": config.governor_address},
+            chi=config.deploy_chi,
         )
         savings, _ = _deploy_contract(
             client,
@@ -562,6 +742,7 @@ def main(argv: list[str] | None = None) -> int:
                 "stable_token_contract_name": config.stable_token_contract_name,
                 "governor_address": config.governor_address,
             },
+            chi=config.deploy_chi,
         )
         vaults, _ = _deploy_contract(
             client,
@@ -574,6 +755,7 @@ def main(argv: list[str] | None = None) -> int:
                 "savings_contract_name": config.savings_contract_name,
                 "treasury_address_value": config.treasury_address,
             },
+            chi=config.deploy_chi,
         )
         psm, _ = _deploy_contract(
             client,
@@ -587,6 +769,7 @@ def main(argv: list[str] | None = None) -> int:
                 "mint_fee_bps_value": config.mint_fee_bps,
                 "redeem_fee_bps_value": config.redeem_fee_bps,
             },
+            chi=config.deploy_chi,
         )
 
         tx_hashes: dict[str, list[str]] = {
@@ -602,14 +785,17 @@ def main(argv: list[str] | None = None) -> int:
             config.psm_contract_name,
         ):
             tx_hash = _maybe_set_controller(
+                client,
+                config.stable_token_contract_name,
                 stable_token,
                 account=account,
                 enabled=True,
+                chi=config.tx_chi,
             )
             if tx_hash:
                 tx_hashes["controllers"].append(tx_hash)
 
-        tx_hashes["oracle"] = _ensure_oracle_state(oracle, config)
+        tx_hashes["oracle"] = _ensure_oracle_state(client, oracle, config)
         tx_hashes["fee_routing"] = _ensure_fee_destinations(
             vaults, psm, config
         )
@@ -628,6 +814,7 @@ def main(argv: list[str] | None = None) -> int:
         }
         if args.start_governance_handoff:
             tx_hashes["governance_handoff"] = _maybe_start_governance_handoff(
+                client,
                 protocol_contracts, config
             )
 
@@ -653,8 +840,15 @@ def main(argv: list[str] | None = None) -> int:
                 "min_reporters_required": config.min_reporters_required,
                 "asset_price": str(config.asset_price),
             },
-            "default_vault_type": vaults.call("get_vault_type", vault_type_id=1),
-            "psm_state": psm.call("get_state"),
+            "default_vault_type": _snapshot_vault_type(
+                client,
+                config.vaults_contract_name,
+                1,
+            ),
+            "psm_state": _snapshot_psm_state(
+                client,
+                config.psm_contract_name,
+            ),
             "tx_hashes": {
                 key: [value for value in values if value]
                 for key, values in tx_hashes.items()

@@ -8,10 +8,11 @@ into both a savings pool and an explicit surplus buffer.
 
 ## Components
 
-### `members` / `governance`
+### `masternodes` / `governance`
 
-- production ownership is meant to live with Xian's chain-level `members` and `governance` contracts
-- `members` supplies the weighted membership interface
+- production ownership is meant to live with Xian's current chain-level
+  `masternodes` and `governance` contracts
+- `masternodes` supplies the weighted membership interface
 - `governance` executes protocol contract calls once proposals reach threshold
 - the repo includes compatibility harnesses for standalone local tests, but the target runtime is the real chain governance system
 
@@ -20,6 +21,7 @@ into both a savings pool and an explicit surplus buffer.
 - standard fungible token
 - governor-managed controller allowlist
 - intended controllers: `vaults` and `psm`
+- live-chain deployments use `con_stable_token`, `con_vaults`, and `con_psm`
 - users can burn their own balance
 
 ### `oracle`
@@ -34,6 +36,8 @@ into both a savings pool and an explicit surplus buffer.
 - peg stability module for reserve-backed mint and redeem flows
 - symmetric 1:1 style conversions with configurable mint and redeem fees
 - reserve fees route directly to treasury
+- live-chain deployments typically use a reserve asset such as
+  `con_reserve_token`
 - provides a clean redeem path without touching CDP collateral
 
 ### `vaults`
@@ -45,6 +49,8 @@ into both a savings pool and an explicit surplus buffer.
 - auction liquidation when partial cure cannot restore the vault
 - auction cure and auction cancellation when the vault becomes safe again
 - fee routing to `savings`, `treasury`, or `governor`
+- live-chain deployments typically use `con_vaults`, `con_savings`, and a
+  collateral asset such as `con_collateral_token`
 - explicit surplus buffer, bad debt accounting, and recapitalization hooks
 
 ### `savings`
@@ -61,7 +67,8 @@ into both a savings pool and an explicit surplus buffer.
 The old project called itself a DAO but the contracts were really operator-owned.
 This redesign makes governance an explicit chain integration point. Bootstrap
 still starts from a human governor, but production ownership is meant to move to
-Xian's `governance` contract backed by `members`, not to an isolated protocol DAO.
+Xian's `governance` contract backed by `masternodes`, not to an isolated
+protocol DAO.
 
 ### 2. Debt is tracked as shares, not stored debt snapshots
 

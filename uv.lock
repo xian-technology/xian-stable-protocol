@@ -653,28 +653,27 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "xian-tech-contracting", git = "https://github.com/xian-technology/xian-contracting?branch=main" }]
+requires-dist = [{ name = "xian-tech-contracting", editable = "../xian-contracting" }]
 
 [package.metadata.requires-dev]
-deploy = [{ name = "xian-tech-py", specifier = ">=0.4.11,<0.5" }]
+deploy = [{ name = "xian-tech-py", editable = "../xian-py" }]
 dev = [{ name = "pytest", specifier = ">=9.0.2,<10" }]
 
 [[package]]
 name = "xian-tech-accounts"
 version = "0.1.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../xian-contracting/packages/xian-accounts" }
 dependencies = [
     { name = "pynacl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ce/2e/507398162149c2b837f3960688cd55601a648dbbae4f0aaae17ac11e9ba2/xian_tech_accounts-0.1.0.tar.gz", hash = "sha256:1c57d9b6ee129a83b7593354819e83965b81e75f02792a96e959bcb4c3084e8d", size = 2574 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/ba/a38082f88a01fdd27ef0493dfe4b257cb8fded5422ab2f760878a607c631/xian_tech_accounts-0.1.0-py3-none-any.whl", hash = "sha256:a1eb69908eda0cdddbe8ec026af2e11c43cfc3a463551b1bc33e128fbc3def33", size = 2570 },
-]
+
+[package.metadata]
+requires-dist = [{ name = "pynacl", specifier = ">=1.5.0,<2" }]
 
 [[package]]
 name = "xian-tech-contracting"
-version = "1.0.1"
-source = { git = "https://github.com/xian-technology/xian-contracting?branch=main#ac51953cd9c49b2c5342460cfce498ab080a1be1" }
+version = "1.0.4"
+source = { editable = "../xian-contracting" }
 dependencies = [
     { name = "autopep8" },
     { name = "cachetools" },
@@ -683,25 +682,62 @@ dependencies = [
     { name = "xian-tech-runtime-types" },
 ]
 
+[package.metadata]
+requires-dist = [
+    { name = "autopep8", specifier = ">=1.5.7,<2" },
+    { name = "cachetools", specifier = ">=5,<8" },
+    { name = "lmdb", specifier = ">=1.6,<3" },
+    { name = "pynacl", specifier = ">=1.5.0,<2" },
+    { name = "xian-tech-fastpath-core", marker = "extra == 'native'", editable = "../xian-contracting/packages/xian-fastpath-core" },
+    { name = "xian-tech-native-tracer", marker = "extra == 'native'", editable = "../xian-contracting/packages/xian-native-tracer" },
+    { name = "xian-tech-runtime-types", editable = "../xian-contracting/packages/xian-runtime-types" },
+    { name = "xian-tech-zk", marker = "extra == 'zk'", editable = "../xian-contracting/packages/xian-zk" },
+]
+provides-extras = ["native", "zk"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.2,<10" },
+    { name = "pytest-cov", specifier = ">=7.0.0,<8" },
+    { name = "ruff", specifier = ">=0.15.6,<0.16" },
+]
+
 [[package]]
 name = "xian-tech-py"
 version = "0.4.11"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../xian-py" }
 dependencies = [
     { name = "aiohttp" },
     { name = "pynacl" },
     { name = "xian-tech-accounts" },
     { name = "xian-tech-runtime-types" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/5e/a32805b7e13858b39e7fabd714055b7c4d12283e4f9ec1b0636c333c35b9/xian_tech_py-0.4.11.tar.gz", hash = "sha256:f9a18ba5b07c57c2e889c944733ab7281b7da476f39c967ae5b170c779f9dcd7", size = 36740 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c5/28/78020e3faf03a7a2da03dd7b2e643d269d16f280d727af034e1667d73c94/xian_tech_py-0.4.11-py3-none-any.whl", hash = "sha256:7cc1563c8d7e459c1052218c08465ef17f9c81cbdceb1b48ac042240f1b3f2d1", size = 38544 },
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp", specifier = ">=3.9.0,<4" },
+    { name = "bip-utils", marker = "extra == 'hd'", specifier = ">=2.9.3,<3" },
+    { name = "eth-account", marker = "extra == 'eth'", specifier = ">=0.13.4,<0.14" },
+    { name = "eth-utils", marker = "extra == 'eth'", specifier = ">=5.2.0,<6" },
+    { name = "fastapi", marker = "extra == 'app'", specifier = ">=0.116.0,<0.117" },
+    { name = "pynacl", specifier = ">=1.5.0,<2" },
+    { name = "uvicorn", marker = "extra == 'app'", specifier = ">=0.35.0,<0.36" },
+    { name = "xian-tech-accounts", editable = "../xian-contracting/packages/xian-accounts" },
+    { name = "xian-tech-runtime-types", editable = "../xian-contracting/packages/xian-runtime-types" },
+]
+provides-extras = ["hd", "eth", "app"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0.2,<10" },
+    { name = "pytest-cov", specifier = ">=7.0.0,<8" },
+    { name = "ruff", specifier = ">=0.15.6,<0.16" },
 ]
 
 [[package]]
 name = "xian-tech-runtime-types"
 version = "0.1.0"
-source = { git = "https://github.com/xian-technology/xian-contracting?subdirectory=packages%2Fxian-runtime-types&branch=main#ac51953cd9c49b2c5342460cfce498ab080a1be1" }
+source = { editable = "../xian-contracting/packages/xian-runtime-types" }
 
 [[package]]
 name = "yarl"

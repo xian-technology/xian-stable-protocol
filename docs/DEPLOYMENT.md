@@ -31,8 +31,12 @@ uv run pytest -q
 uv run python scripts/bootstrap_protocol.py
 ```
 
-By default the bootstrap script also deploys sample `collateral_token` and
-`reserve_token` contracts so the local environment is immediately usable for:
+The `deploy` group expects the standard Xian workspace layout, including the
+sibling `xian-py` and `xian-contracting` checkouts.
+
+By default the bootstrap script also deploys sample
+`con_collateral_token` and `con_reserve_token` contracts so the local
+environment is immediately usable for:
 
 - opening a vault
 - minting the stable asset
@@ -70,7 +74,7 @@ operator workflow:
 - existing protocol contracts are left in place
 - controller allowlist entries are only added when missing
 - the default vault type is only created when vault type `1` does not exist
-- fee-routing targets on `vaults` and `psm` are re-applied explicitly
+- fee-routing targets on `con_vaults` and `con_psm` are re-applied explicitly
 - oracle asset configuration is re-applied explicitly
 
 The script does **not** try to mutate an existing vault type in place. If
@@ -87,7 +91,7 @@ Required:
 Common overrides:
 
 - `XIAN_STABLE_GOVERNOR`: initial governor address for protocol contracts
-- `XIAN_STABLE_TREASURY`: treasury address used by `vaults` and `psm`
+- `XIAN_STABLE_TREASURY`: treasury address used by `con_vaults` and `con_psm`
 - `XIAN_STABLE_TOKEN_CONTRACT`
 - `XIAN_STABLE_ORACLE_CONTRACT`
 - `XIAN_STABLE_SAVINGS_CONTRACT`
@@ -105,13 +109,32 @@ Common overrides:
 - `XIAN_STABLE_STABILITY_FEE_BPS`
 - `XIAN_STABLE_PSM_MINT_FEE_BPS`
 - `XIAN_STABLE_PSM_REDEEM_FEE_BPS`
+- `XIAN_STABLE_DEPLOY_CHI`
+- `XIAN_STABLE_TX_CHI`
 
 The defaults are aimed at a usable local/staging protocol, not final production
 risk settings.
 
+For the protocol core, current Xian submission rules require user-deployed
+contract names to start with `con_`. The bootstrap defaults already use:
+
+- `con_stable_token`
+- `con_oracle`
+- `con_savings`
+- `con_vaults`
+- `con_psm`
+
+When sample assets are enabled, the default local/staging token names are:
+
+- `con_collateral_token`
+- `con_reserve_token`
+
 During bootstrap, `XIAN_STABLE_GOVERNOR` should match the wallet you are using
 to run the script. Governor-managed configuration only moves to chain
 governance after you explicitly start the handoff.
+
+The bootstrap script supplies explicit chi budgets for writes so it can still
+run on network profiles where readonly simulation is disabled or unavailable.
 
 ## Governance Handoff
 
@@ -123,11 +146,11 @@ uv run python scripts/bootstrap_protocol.py --start-governance-handoff
 
 That sends `start_governance_transfer(new_governor='governance')` to:
 
-- `stable_token`
-- `oracle`
-- `savings`
-- `vaults`
-- `psm`
+- `con_stable_token`
+- `con_oracle`
+- `con_savings`
+- `con_vaults`
+- `con_psm`
 
 It does not complete the transfer. The chain `governance` contract must still
 call `accept_governance()` on each target through ordinary governance
@@ -137,18 +160,19 @@ proposals.
 
 Verify at minimum:
 
-- `stable_token.is_controller('vaults')` is `True`
-- `stable_token.is_controller('psm')` is `True`
-- `oracle.price_info('<asset-key>')` returns a live price with enough fresh
+- `con_stable_token.is_controller('con_vaults')` is `True`
+- `con_stable_token.is_controller('con_psm')` is `True`
+- `con_oracle.price_info('<asset-key>')` returns a live price with enough fresh
   reports
-- `vaults.get_vault_type(1)` returns the expected collateral and fee settings
-- `psm.get_state()` reports the intended reserve token, fee settings, and
+- `con_vaults.get_vault_type(1)` returns the expected collateral and fee
+  settings
+- `con_psm.get_state()` reports the intended reserve token, fee settings, and
   treasury address
 
 ## Notes
 
-- Production ownership is expected to move to the chain `members` /
-  `governance` pair, not to stay with a human bootstrap key.
+- Production ownership is expected to move to the current chain
+  `masternodes` / `governance` pair, not to stay with a human bootstrap key.
 - The local compatibility harnesses in this repository are only for standalone
   unit tests.
 - Fee routing is part of correct deployment, not an optional polish step.
