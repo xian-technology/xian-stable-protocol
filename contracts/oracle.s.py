@@ -96,13 +96,11 @@ def sort_prices(values: list):
     ordered = []
     for value in values:
         inserted = False
-        i = 0
-        while i < len(ordered):
-            if value < ordered[i]:
-                ordered.insert(i, value)
+        for index in range(len(ordered)):
+            if value < ordered[index]:
+                ordered.insert(index, value)
                 inserted = True
                 break
-            i += 1
 
         if not inserted:
             ordered.append(value)
