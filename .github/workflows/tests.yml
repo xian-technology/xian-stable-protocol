@@ -9,12 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out xian-stable-protocol
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: xian-stable-protocol
 
       - name: Check out xian-contracting
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.repository_owner }}/xian-contracting
           ref: main
@@ -32,7 +32,7 @@ jobs:
           fi
 
       - name: Check out xian-py
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.repository_owner }}/xian-py
           ref: main
