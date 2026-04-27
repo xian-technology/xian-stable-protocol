@@ -22,13 +22,17 @@ def test_create_and_close_vault_routes_fees_to_savings_and_surplus(protocol):
         signer="alice",
         environment=end,
     )
-    vault_type = protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)
+    vault_type = protocol.vaults.get_vault_type(
+        vault_type_id=protocol.vault_type_id
+    )
 
     assert returned_collateral == 100
     assert protocol.savings.total_assets() == pytest.approx(4)
     assert vault_type["surplus_buffer"] == pytest.approx(1)
     assert protocol.stable_token.balance_of(address="alice") == pytest.approx(5)
-    assert protocol.collateral_token.balance_of(address="alice") == pytest.approx(1_000)
+    assert protocol.collateral_token.balance_of(
+        address="alice"
+    ) == pytest.approx(1_000)
     assert vault_type["live_principal_outstanding"] == 0
 
 
@@ -41,7 +45,9 @@ def test_withdraw_collateral_rejects_unsafe_state(protocol):
     )
 
     with pytest.raises(AssertionError):
-        protocol.vaults.withdraw_collateral(vault_id=vault_id, amount=30, signer="alice")
+        protocol.vaults.withdraw_collateral(
+            vault_id=vault_id, amount=30, signer="alice"
+        )
 
 
 def test_fast_liquidation_performs_partial_cure(protocol):
@@ -56,7 +62,9 @@ def test_fast_liquidation_performs_partial_cure(protocol):
     protocol.stable_token.approve(amount=100, to="vaults", signer="bob")
 
     quote = protocol.vaults.get_liquidation_quote(vault_id=vault_id)
-    collateral_paid = protocol.vaults.liquidate_fast(vault_id=vault_id, signer="bob")
+    collateral_paid = protocol.vaults.liquidate_fast(
+        vault_id=vault_id, signer="bob"
+    )
     vault = protocol.vaults.get_vault(vault_id=vault_id)
 
     assert quote["partial_possible"] is True
@@ -92,7 +100,9 @@ def test_auction_can_be_cured_by_owner_before_bids(protocol):
     assert vault["open"] is True
     assert vault["auction_open"] is False
     assert float(vault["debt"]) == pytest.approx(30)
-    assert float(vault["collateralization_bps"]) == pytest.approx(16666.666666666668)
+    assert float(vault["collateralization_bps"]) == pytest.approx(
+        16666.666666666668
+    )
 
 
 def test_auction_can_be_cancelled_after_price_recovery_without_bids(protocol):
@@ -113,7 +123,9 @@ def test_auction_can_be_cancelled_after_price_recovery_without_bids(protocol):
     )
 
     protocol.oracle.submit_price(asset="COL", price=2, signer="governor")
-    restored = protocol.vaults.cancel_auction_if_safe(vault_id=vault_id, signer="carol")
+    restored = protocol.vaults.cancel_auction_if_safe(
+        vault_id=vault_id, signer="carol"
+    )
 
     assert restored["open"] is True
     assert restored["auction_open"] is False
@@ -168,11 +180,12 @@ def test_auction_extends_records_bad_debt_and_allows_loser_refund(protocol):
     assert settlement["winning_bid"] == 45
     assert settlement["bad_debt"] == pytest.approx(55)
     assert refund == 40
-    assert protocol.collateral_token.balance_of(address="carol") == pytest.approx(1_100)
-    assert (
-        protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)["bad_debt"]
-        == pytest.approx(55)
-    )
+    assert protocol.collateral_token.balance_of(
+        address="carol"
+    ) == pytest.approx(1_100)
+    assert protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)[
+        "bad_debt"
+    ] == pytest.approx(55)
     assert protocol.stable_token.total_supply_of() == pytest.approx(255)
 
 
@@ -225,7 +238,9 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
         environment=auction_end,
     )
 
-    covered = protocol.vaults.cover_bad_debt(vault_type_id=protocol.vault_type_id)
+    covered = protocol.vaults.cover_bad_debt(
+        vault_type_id=protocol.vault_type_id
+    )
     protocol.stable_token.mint(amount=10, to="carol", signer="governor")
     protocol.stable_token.approve(amount=10, to="vaults", signer="carol")
     recapitalized = protocol.vaults.recapitalize(
@@ -233,9 +248,13 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
         amount=10,
         signer="carol",
     )
-    swept = protocol.vaults.sweep_surplus(vault_type_id=protocol.vault_type_id, signer="governor")
+    swept = protocol.vaults.sweep_surplus(
+        vault_type_id=protocol.vault_type_id, signer="governor"
+    )
 
-    vault_type = protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)
+    vault_type = protocol.vaults.get_vault_type(
+        vault_type_id=protocol.vault_type_id
+    )
     assert covered == pytest.approx(1)
     assert recapitalized["bad_debt_reduced"] == 0
     assert recapitalized["surplus_added"] == pytest.approx(10)

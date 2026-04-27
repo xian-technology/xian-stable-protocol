@@ -208,9 +208,7 @@ def _load_config(wallet: Wallet) -> BootstrapConfig:
             "XIAN_STABLE_MEMBERSHIP_CONTRACT",
             DEFAULT_MEMBERSHIP_CONTRACT,
         ),
-        stable_token_name=_env_str(
-            "XIAN_STABLE_TOKEN_NAME", "Xian Dollar"
-        ),
+        stable_token_name=_env_str("XIAN_STABLE_TOKEN_NAME", "Xian Dollar"),
         stable_token_symbol=_env_str("XIAN_STABLE_TOKEN_SYMBOL", "xUSD"),
         stable_token_contract_name=_env_str(
             "XIAN_STABLE_TOKEN_CONTRACT",
@@ -249,9 +247,7 @@ def _load_config(wallet: Wallet) -> BootstrapConfig:
         reserve_token_name=_env_str(
             "XIAN_STABLE_RESERVE_NAME", "Reserve Dollar"
         ),
-        reserve_token_symbol=_env_str(
-            "XIAN_STABLE_RESERVE_SYMBOL", "rUSD"
-        ),
+        reserve_token_symbol=_env_str("XIAN_STABLE_RESERVE_SYMBOL", "rUSD"),
         sample_token_supply=_env_numeric(
             "XIAN_STABLE_SAMPLE_TOKEN_SUPPLY", 1_000_000
         ),
@@ -282,9 +278,7 @@ def _load_config(wallet: Wallet) -> BootstrapConfig:
         auction_duration_seconds=_env_int(
             "XIAN_STABLE_AUCTION_DURATION_SECONDS", 86400
         ),
-        surplus_buffer_bps=_env_int(
-            "XIAN_STABLE_SURPLUS_BUFFER_BPS", 2000
-        ),
+        surplus_buffer_bps=_env_int("XIAN_STABLE_SURPLUS_BUFFER_BPS", 2000),
         min_bid_increment_bps=_env_int(
             "XIAN_STABLE_MIN_BID_INCREMENT_BPS", 500
         ),
@@ -597,7 +591,9 @@ def _snapshot_vault_type(
         "bad_debt",
     )
     return {
-        field: client.get_state(contract_name, "vault_types", vault_type_id, field)
+        field: client.get_state(
+            contract_name, "vault_types", vault_type_id, field
+        )
         for field in fields
     }
 
@@ -611,9 +607,7 @@ def _snapshot_psm_state(client: Xian, contract_name: str) -> dict[str, Any]:
             contract_name, "reserve_token_contract"
         ),
         "governor": client.get_state(contract_name, "governor"),
-        "treasury_address": client.get_state(
-            contract_name, "treasury_address"
-        ),
+        "treasury_address": client.get_state(contract_name, "treasury_address"),
         "mint_fee_bps": client.get_state(contract_name, "mint_fee_bps"),
         "redeem_fee_bps": client.get_state(contract_name, "redeem_fee_bps"),
         "paused": client.get_state(contract_name, "paused"),
@@ -794,9 +788,7 @@ def main(argv: list[str] | None = None) -> int:
                 tx_hashes["controllers"].append(tx_hash)
 
         tx_hashes["oracle"] = _ensure_oracle_state(client, oracle, config)
-        tx_hashes["fee_routing"] = _ensure_fee_destinations(
-            vaults, psm, config
-        )
+        tx_hashes["fee_routing"] = _ensure_fee_destinations(vaults, psm, config)
         _, vault_type_tx_hash = _ensure_default_vault_type(
             client, vaults, config
         )
@@ -812,8 +804,7 @@ def main(argv: list[str] | None = None) -> int:
         }
         if args.start_governance_handoff:
             tx_hashes["governance_handoff"] = _maybe_start_governance_handoff(
-                client,
-                protocol_contracts, config
+                client, protocol_contracts, config
             )
 
         summary = {

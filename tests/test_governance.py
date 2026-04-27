@@ -75,7 +75,10 @@ def test_xian_governance_can_update_protocol_risk_parameters(protocol):
     fee_change = protocol.governance.propose_contract_call(
         target_contract="vaults",
         target_function="set_vault_type_fee",
-        kwargs={"vault_type_id": protocol.vault_type_id, "stability_fee_bps": 750},
+        kwargs={
+            "vault_type_id": protocol.vault_type_id,
+            "stability_fee_bps": 750,
+        },
         summary="Raise stability fee",
         signer="alice",
         environment=start,

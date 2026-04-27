@@ -24,4 +24,3 @@ def test_savings_share_price_rises_when_rewards_arrive(protocol):
     assert protocol.savings.share_price() == pytest.approx(1.2)
     redeemed = protocol.savings.withdraw(shares=50, signer="alice")
     assert redeemed == pytest.approx(60)
-
