@@ -6,6 +6,24 @@ CDP-style stablecoin with a savings vault, a peg-stability module, an
 on-chain oracle, and an executable bootstrap path that wires the system
 into the Xian stack.
 
+## Protocol Shape
+
+```mermaid
+flowchart LR
+  Collateral["Collateral token"] --> Vaults["con_vaults"]
+  Vaults --> Stable["con_stable_token"]
+  Oracle["con_oracle"] --> Vaults
+  Stable --> Savings["con_savings"]
+  Stable --> PSM["con_psm"]
+  Reserve["Reserve token"] --> PSM
+  Vaults --> Treasury["Treasury or savings route"]
+  PSM --> Treasury
+  Governance["governance"] --> Vaults
+  Governance --> Oracle
+  Governance --> Savings
+  Governance --> PSM
+```
+
 ## Status
 
 Strong reference implementation with a real Xian-stack bootstrap path.
@@ -136,19 +154,20 @@ with `con_`. The bootstrap defaults therefore use:
 
 ## Xian Stack Integration
 
-Packaged as a first-class Xian solution pack:
+Packaged as a first-class Xian module:
 
-- `xian-configs/solution-packs/stable-protocol/` contains the canonical
-  pack manifest and mirrored contract assets used by `xian-cli`
-- `xian-cli` surfaces the pack with:
-  - `uv run xian solution-pack show stable-protocol`
-  - `uv run xian solution-pack starter stable-protocol`
-  - `uv run xian solution-pack starter stable-protocol --flow remote`
-- `xian-deploy/docs/SOLUTION_PACKS.md` mirrors the recommended remote
-  operator posture for the pack
+- `xian-configs/modules/stable-protocol/` contains the canonical module
+  manifest and pinned contract assets used by `xian-cli`
+- `xian-cli` surfaces the module with:
+  - `uv run xian module show stable-protocol`
+  - `uv run xian module validate stable-protocol`
+  - `uv run xian module install stable-protocol --dry-run`
+- `xian-deploy/docs/SOLUTIONS.md` describes the recommended remote operator
+  posture before running this repo's canonical bootstrap script
 
 The protocol repository remains the canonical bootstrap and operator
-entrypoint. The starter flows point here for deployment and wiring.
+entrypoint. The module path lets tooling discover, validate, and delegate to
+that bootstrap flow without copying the protocol's deployment logic.
 
 ## Validation
 
@@ -186,5 +205,5 @@ SDK revision the rest of the Xian stack is using.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — major components and dependency direction
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — operator deployment guide
 - [docs/ROADMAP.md](docs/ROADMAP.md) — production-hardening work
-- [`../xian-configs/README.md`](../xian-configs/README.md) — solution-pack manifests
+- [`../xian-configs/README.md`](../xian-configs/README.md) — module manifests
 - [`../xian-cli/README.md`](../xian-cli/README.md) — operator CLI
