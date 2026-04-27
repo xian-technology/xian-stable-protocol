@@ -30,7 +30,7 @@ def protocol(tmp_path):
     members = submit_contract(
         client,
         "members",
-        "members_compat.s.py",
+        "members_harness.s.py",
         {
             "initial_members": ["alice", "bob", "carol"],
             "initial_weights": {
@@ -44,7 +44,7 @@ def protocol(tmp_path):
     governance = submit_contract(
         client,
         "governance",
-        "governance_compat.s.py",
+        "governance_harness.s.py",
         {
             "membership_contract_name": "members",
             "approval_threshold_numerator": 2,

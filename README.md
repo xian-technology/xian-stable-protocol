@@ -45,12 +45,10 @@ entrypoint. The starter flows point here for deployment and wiring.
 
 ## Contracts
 
-- [contracts/members_compat.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/members_compat.s.py)
-  A lightweight compatibility harness for the membership interface
-  used in standalone tests.
-- [contracts/governance_compat.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/governance_compat.s.py)
-  A standalone compatibility harness mirroring Xian's contract-call governance
-  flow.
+- [contracts/members_harness.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/members_harness.s.py)
+  A lightweight local membership harness used in standalone tests.
+- [contracts/governance_harness.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/governance_harness.s.py)
+  A standalone local governance harness for contract-call tests.
 - [contracts/stable_token.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/stable_token.s.py)
   A controller-minted fungible token intended for the protocol stable asset.
 - [contracts/oracle.s.py](/Users/endogen/Projekte/xian/xian-stable-protocol/contracts/oracle.s.py)

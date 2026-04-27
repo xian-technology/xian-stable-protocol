@@ -14,7 +14,8 @@ into both a savings pool and an explicit surplus buffer.
   `masternodes` and `governance` contracts
 - `masternodes` supplies the weighted membership interface
 - `governance` executes protocol contract calls once proposals reach threshold
-- the repo includes compatibility harnesses for standalone local tests, but the target runtime is the real chain governance system
+- the repo includes local harness contracts for standalone tests, but the target
+  runtime is the real chain governance system
 
 ### `stable_token`
 

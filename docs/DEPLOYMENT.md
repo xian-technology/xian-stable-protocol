@@ -173,6 +173,6 @@ Verify at minimum:
 
 - Production ownership is expected to move to the current chain
   `masternodes` / `governance` pair, not to stay with a human bootstrap key.
-- The local compatibility harnesses in this repository are only for standalone
-  unit tests.
+- The local harness contracts in this repository are only for standalone unit
+  tests.
 - Fee routing is part of correct deployment, not an optional polish step.
