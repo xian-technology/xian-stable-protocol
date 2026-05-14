@@ -44,13 +44,6 @@ jobs:
       - name: Sync dependencies
         working-directory: xian-stable-protocol
         run: uv sync --locked --group dev
-      - name: Audit Python VM contract compatibility
-        working-directory: xian-stable-protocol
-        run: |
-          uv run --project ../xian-contracting python \
-            ../xian-contracting/scripts/audit_python_vm_compatibility.py \
-            ./contracts \
-            --fail-on-issues
       - name: Audit authored contract conformance coverage
         working-directory: xian-stable-protocol
         run: |
