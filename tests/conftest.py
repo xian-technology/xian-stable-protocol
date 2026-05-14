@@ -2,7 +2,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from contracting.client import ContractingClient
+from contracting.local import ContractingClient
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS_DIR = ROOT / "contracts"
@@ -16,7 +16,7 @@ def submit_contract(
 ):
     source = (CONTRACTS_DIR / file_name).read_text(encoding="utf-8")
     client.submit(source, name=name, constructor_args=constructor_args or {})
-    return client.get_contract(name)
+    return client.get_contract_proxy(name)
 
 
 @pytest.fixture

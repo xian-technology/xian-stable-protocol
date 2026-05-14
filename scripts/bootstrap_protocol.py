@@ -331,7 +331,7 @@ def _deploy_contract(
     args: dict[str, Any],
     chi: int,
 ) -> tuple[Any, bool]:
-    existing_source = client.get_contract(name)
+    existing_source = client.get_contract_source(name)
     if existing_source is None:
         result = _ensure_submission_succeeded(
             client.submit_contract(
@@ -355,7 +355,7 @@ def _ensure_chain_governance(client: Xian, config: BootstrapConfig) -> None:
         config.membership_contract_name,
         config.governance_contract_name,
     ):
-        if client.get_contract(contract_name) is None:
+        if client.get_contract_source(contract_name) is None:
             raise RuntimeError(
                 f"Required chain contract '{contract_name}' is missing."
             )
@@ -693,7 +693,7 @@ def main(argv: list[str] | None = None) -> int:
                 config.collateral_contract_name,
                 config.reserve_contract_name,
             ):
-                if client.get_contract(name) is None:
+                if client.get_contract_source(name) is None:
                     raise RuntimeError(
                         f"Configured token contract '{name}' does not exist."
                     )
