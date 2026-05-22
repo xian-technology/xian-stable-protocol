@@ -28,7 +28,7 @@ From this repository:
 ```bash
 uv sync --group dev --group deploy
 uv run pytest -q
-uv run python scripts/bootstrap_protocol.py
+uv run python scripts/bootstrap_protocol.py --no-start-governance-handoff
 ```
 
 The `deploy` group expects the standard Xian workspace layout, including the
@@ -130,18 +130,20 @@ When sample assets are enabled, the default local/staging token names are:
 - `con_reserve_token`
 
 During bootstrap, `XIAN_STABLE_GOVERNOR` should match the wallet you are using
-to run the script. Governor-managed configuration only moves to chain
-governance after you explicitly start the handoff.
+to run the script. The script starts handoff to the chain `governance`
+contract by default after deployment and wiring are complete. Use
+`--no-start-governance-handoff` only for disposable local testing.
 
 The bootstrap script supplies explicit chi budgets for writes so it can still
 run on network profiles where readonly simulation is disabled or unavailable.
 
 ## Governance Handoff
 
-After verifying bootstrap state, start governance transfer with:
+The bootstrap script starts governance transfer by default. Re-run it later
+without `--no-start-governance-handoff` if you explicitly skipped that step:
 
 ```bash
-uv run python scripts/bootstrap_protocol.py --start-governance-handoff
+uv run python scripts/bootstrap_protocol.py
 ```
 
 That sends `start_governance_transfer(new_governor='governance')` to:

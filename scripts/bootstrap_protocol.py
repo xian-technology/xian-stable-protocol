@@ -630,10 +630,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--start-governance-handoff",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help=(
             "Start governance transfer for protocol contracts to the chain "
-            "governance contract after bootstrap completes."
+            "governance contract after bootstrap completes. Use "
+            "--no-start-governance-handoff only for disposable local testing."
         ),
     )
     return parser
@@ -850,8 +852,8 @@ def main(argv: list[str] | None = None) -> int:
                 ]
                 if args.start_governance_handoff
                 else [
-                    "Run this script with --start-governance-handoff once you want chain governance to take ownership.",
-                    "Add or update vault types, oracle reporters, and PSM fees through governance proposals after handoff.",
+                    "Governance handoff was explicitly skipped. Do not add meaningful TVL until ownership moves to chain governance.",
+                    "Re-run this script without --no-start-governance-handoff to start the transfer.",
                 ]
             ),
         }

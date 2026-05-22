@@ -35,7 +35,7 @@ hardening work is tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
 ```bash
 uv sync --group dev --group deploy
 uv run pytest -q
-uv run python scripts/bootstrap_protocol.py
+uv run python scripts/bootstrap_protocol.py --no-start-governance-handoff
 ```
 
 The bootstrap script:
@@ -48,16 +48,18 @@ The bootstrap script:
 - configures oracle reporters and an initial price feed
 - sets fee-routing addresses on `con_vaults` and `con_psm`
 - seeds a default vault type only when one does not already exist
+- starts protocol governance handoff by default unless explicitly disabled
 - uses explicit chi budgets for writes (does not depend on readonly
   simulation being enabled on the target node)
 - validates that user-deployed contract names start with `con_`
 
 The operator wallet must match the configured initial governor during
 bootstrap. After handoff begins, further governance-managed changes go
-through the chain `governance` contract:
+through the chain `governance` contract. If handoff was skipped for local
+testing, start it later with:
 
 ```bash
-uv run python scripts/bootstrap_protocol.py --start-governance-handoff
+uv run python scripts/bootstrap_protocol.py
 ```
 
 This only *starts* transfer to the chain `governance` contract.
