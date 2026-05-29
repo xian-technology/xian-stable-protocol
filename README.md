@@ -156,20 +156,20 @@ with `con_`. The bootstrap defaults therefore use:
 
 ## Xian Stack Integration
 
-Packaged as a first-class Xian module:
+Packaged as a first-class Xian contract pack:
 
-- `xian-configs/modules/stable-protocol/` contains the canonical module
-  manifest and pinned contract assets used by `xian-cli`
-- `xian-cli` surfaces the module with:
-  - `uv run xian module show stable-protocol`
-  - `uv run xian module validate stable-protocol`
-  - `uv run xian module install stable-protocol --dry-run`
-- `xian-deploy/docs/SOLUTIONS.md` describes the recommended remote operator
-  posture before running this repo's canonical bootstrap script
+- `xian-configs/contract-packs/stable-protocol/` contains the canonical
+  contract-pack manifest and pinned contract assets used by `xian-cli`
+- `xian-cli` surfaces the contract pack with:
+  - `uv run xian contract-pack show stable-protocol`
+  - `uv run xian contract-pack validate stable-protocol`
+  - `uv run xian contract-pack install stable-protocol --dry-run`
+- `xian-deploy` documents the recommended remote operator posture before
+  running this repo's canonical bootstrap script
 
 The protocol repository remains the canonical bootstrap and operator
-entrypoint. The module path lets tooling discover, validate, and delegate to
-that bootstrap flow without copying the protocol's deployment logic.
+entrypoint. The contract-pack path lets tooling discover, validate, and
+delegate to that bootstrap flow without copying the protocol's deployment logic.
 
 ## Validation
 

@@ -3,13 +3,13 @@
 ## Purpose
 
 This repository is the canonical bootstrap entrypoint for the Stable Protocol
-solution pack.
+contract pack.
 
 The Xian stack integration is split cleanly:
 
-- `xian-configs` packages the machine-readable solution-pack manifest plus the
+- `xian-configs` packages the machine-readable contract-pack manifest plus the
   mirrored contract assets
-- `xian-cli` exposes the local and remote starter flows
+- `xian-cli` exposes contract-pack discovery, validation, and install flows
 - `xian-deploy` documents the recommended remote operator posture
 - this repository performs the actual protocol bootstrap and wiring
 
@@ -48,11 +48,12 @@ environment is immediately usable for:
 From the `xian-cli` checkout:
 
 ```bash
-uv run xian solution-pack starter stable-protocol --flow remote
+uv run xian contract-pack show stable-protocol
+uv run xian contract-pack validate stable-protocol
 ```
 
-That starter flow mirrors the expected `consortium-3` remote posture. After the
-network is deployed and healthy, run this repository against the remote RPC:
+After the network is deployed and healthy, run this repository against the
+remote RPC:
 
 ```bash
 export XIAN_NODE_URL=http://<rpc-host>:26657
