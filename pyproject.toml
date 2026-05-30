@@ -7,7 +7,7 @@ name = "xian-stable-protocol"
 version = "0.1.0"
 description = "A Xian-native overcollateralized stable-vault reference protocol."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.14,<3.15"
 dependencies = ["xian-tech-contracting>=1.0.1,<2"]
 
 [dependency-groups]
