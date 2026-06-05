@@ -164,8 +164,8 @@ Packaged as a first-class Xian contract pack:
   - `uv run xian contract-pack show stable-protocol`
   - `uv run xian contract-pack validate stable-protocol`
   - `uv run xian contract-pack install stable-protocol --dry-run`
-- `xian-deploy` documents the recommended remote operator posture before
-  running this repo's canonical bootstrap script
+- this repo owns the canonical post-genesis bootstrap script; `xian-cli`
+  resolves the catalog entry and delegates installation here
 
 The protocol repository remains the canonical bootstrap and operator
 entrypoint. The contract-pack path lets tooling discover, validate, and
