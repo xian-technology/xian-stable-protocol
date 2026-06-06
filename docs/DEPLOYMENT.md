@@ -3,15 +3,16 @@
 ## Purpose
 
 This repository is the canonical bootstrap entrypoint for the Stable Protocol
-contract pack.
+product.
 
 The Xian stack integration is split cleanly:
 
-- `xian-configs` packages the machine-readable contract-pack manifest plus the
-  mirrored contract assets
-- `xian-cli` exposes contract-pack discovery, validation, and install flows
+- `xian-configs` owns network manifests, templates, and system contract bundles
+- `xian-cli` exposes network setup, contract bundle validation, and generic
+  deployment helpers
 - `xian-deploy` documents the recommended remote operator posture
-- this repository performs the actual protocol bootstrap and wiring
+- this repository owns the stable-protocol contract bundle and performs the
+  actual protocol bootstrap and wiring
 
 ## Recommended Local Flow
 
@@ -45,11 +46,10 @@ environment is immediately usable for:
 
 ## Recommended Remote Flow
 
-From the `xian-cli` checkout:
+From this repository, validate the repo-owned bundle:
 
 ```bash
-uv run xian contract-pack show stable-protocol
-uv run xian contract-pack validate stable-protocol
+uv run --project ../xian-cli xian contract bundle validate contract-bundle.json
 ```
 
 After the network is deployed and healthy, run this repository against the

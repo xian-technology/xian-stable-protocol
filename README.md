@@ -156,20 +156,16 @@ with `con_`. The bootstrap defaults therefore use:
 
 ## Xian Stack Integration
 
-Packaged as a first-class Xian contract pack:
+This repository owns the stable-protocol contract bundle and post-genesis
+bootstrap flow:
 
-- `xian-configs/contract-packs/stable-protocol/` contains the canonical
-  contract-pack manifest and pinned contract assets used by `xian-cli`
-- `xian-cli` surfaces the contract pack with:
-  - `uv run xian contract-pack show stable-protocol`
-  - `uv run xian contract-pack validate stable-protocol`
-  - `uv run xian contract-pack install stable-protocol --dry-run`
-- this repo owns the canonical post-genesis bootstrap script; `xian-cli`
-  resolves the catalog entry and delegates installation here
+- `contract-bundle.json` is the hash-pinned deployment bundle for this repo.
+- `scripts/bootstrap_protocol.py` is the canonical operator bootstrap script.
+- `xian-cli` can validate the bundle and submit generated artifacts, but it does
+  not catalog or install products.
 
-The protocol repository remains the canonical bootstrap and operator
-entrypoint. The contract-pack path lets tooling discover, validate, and
-delegate to that bootstrap flow without copying the protocol's deployment logic.
+Run the bootstrap after the target network is deployed and healthy. Network
+manifests and node setup stay in `xian-configs`; protocol deployment stays here.
 
 ## Validation
 
@@ -207,5 +203,5 @@ SDK revision the rest of the Xian stack is using.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — major components and dependency direction
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — operator deployment guide
 - [docs/ROADMAP.md](docs/ROADMAP.md) — production-hardening work
-- [`../xian-configs/README.md`](../xian-configs/README.md) — module manifests
+- [`../xian-configs/README.md`](../xian-configs/README.md) — network manifests and templates
 - [`../xian-cli/README.md`](../xian-cli/README.md) — operator CLI
