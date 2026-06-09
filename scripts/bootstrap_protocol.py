@@ -334,11 +334,11 @@ def _deploy_contract(
     existing_source = client.get_contract_source(name)
     if existing_source is None:
         result = _ensure_submission_succeeded(
-            client.submit_contract(
+            client.deploy_contract(
                 name=name,
-                code=_contract_source(source_file),
+                source=_contract_source(source_file),
                 args=args,
-                **_budget_kwargs(client.submit_contract, chi),
+                **_budget_kwargs(client.deploy_contract, chi),
                 mode="checktx",
                 wait_for_tx=True,
             ),
