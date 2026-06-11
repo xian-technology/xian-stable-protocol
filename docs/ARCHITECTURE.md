@@ -8,11 +8,11 @@ into both a savings pool and an explicit surplus buffer.
 
 ## Components
 
-### `masternodes` / `governance`
+### `validators` / `governance`
 
 - production ownership is meant to live with Xian's current chain-level
-  `masternodes` and `governance` contracts
-- `masternodes` supplies the weighted membership interface
+  `validators` and `governance` contracts
+- `validators` supplies the weighted membership interface
 - `governance` executes protocol contract calls once proposals reach threshold
 - the repo includes local harness contracts for standalone tests, but the target
   runtime is the real chain governance system
@@ -68,7 +68,7 @@ into both a savings pool and an explicit surplus buffer.
 The old project called itself a DAO but the contracts were really operator-owned.
 This redesign makes governance an explicit chain integration point. Bootstrap
 still starts from a human governor, but production ownership is meant to move to
-Xian's `governance` contract backed by `masternodes`, not to an isolated
+Xian's `governance` contract backed by `validators`, not to an isolated
 protocol DAO.
 
 ### 2. Debt is tracked as shares, not stored debt snapshots

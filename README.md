@@ -76,7 +76,7 @@ The protocol keeps the original high-level model:
 - vault debt accrues a stability fee
 - protocol fees can be routed into a savings pool
 - unsafe vaults can be liquidated quickly or auctioned
-- governance changes execute through Xian's `masternodes` and
+- governance changes execute through Xian's `validators` and
   `governance` contracts
 - a peg-stability module offers direct mint and redeem flows against
   reserve assets
@@ -149,7 +149,7 @@ Day-2 governance-managed surface includes:
 Current Xian submission rules require user-deployed contracts to start
 with `con_`. The bootstrap defaults therefore use:
 
-- `masternodes`, `governance` — chain-managed
+- `validators`, `governance` — chain-managed
 - `con_stable_token`, `con_oracle`, `con_savings`, `con_vaults`,
   `con_psm` — protocol contracts
 - `con_collateral_token`, `con_reserve_token` — local / staging samples

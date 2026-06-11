@@ -16,7 +16,7 @@ from xian_py.models import TransactionSubmission
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS_DIR = ROOT / "contracts"
 DEFAULT_GOVERNANCE_CONTRACT = "governance"
-DEFAULT_MEMBERSHIP_CONTRACT = "masternodes"
+DEFAULT_MEMBERSHIP_CONTRACT = "validators"
 DEFAULT_STABLE_TOKEN_CONTRACT = "con_stable_token"
 DEFAULT_ORACLE_CONTRACT = "con_oracle"
 DEFAULT_SAVINGS_CONTRACT = "con_savings"
