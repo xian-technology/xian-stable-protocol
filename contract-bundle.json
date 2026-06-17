@@ -7,7 +7,7 @@
   "description": "Pinned stable-protocol contract bundle for validation and operator bootstrap flows.",
   "source": {
     "repo": "https://github.com/xian-technology/xian-stable-protocol",
-    "commit": "a97f59872d0eae3e297a19a243340c0a574e56f4",
+    "commit": "d2a0ec60b7253ceda472d75ab20a90511e46c650",
     "snapshot_policy": "Owned by xian-stable-protocol for reproducible bootstrap validation."
   },
   "contracts": [
