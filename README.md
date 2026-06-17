@@ -129,14 +129,14 @@ Day-2 governance-managed surface includes:
 ## Key Directories
 
 - `contracts/` — protocol contracts:
-  - `stable_token.s.py` — controller-minted fungible stable asset.
-  - `oracle.s.py` — governed multi-reporter oracle with freshness and
+  - `con_stable_token.s.py` — controller-minted fungible stable asset.
+  - `con_oracle.s.py` — governed multi-reporter oracle with freshness and
     quorum controls.
-  - `savings.s.py` — share-based savings vault whose share price
+  - `con_savings.s.py` — share-based savings vault whose share price
     increases when fees are routed in.
-  - `vaults.s.py` — CDP engine: vault types, borrowing, debt-share
+  - `con_vaults.s.py` — CDP engine: vault types, borrowing, debt-share
     accrual, partial liquidation, auctions, and bad-debt handling.
-  - `psm.s.py` — peg-stability module that mints and redeems against
+  - `con_psm.s.py` — peg-stability module that mints and redeems against
     reserve assets with configurable fees.
   - `members_harness.s.py`, `governance_harness.s.py` — local test
     harnesses for membership and governance.

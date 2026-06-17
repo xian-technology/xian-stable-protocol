@@ -74,7 +74,7 @@ def test_deploy_contract_uses_current_xian_py_deploy_api():
     contract, deployed = bootstrap._deploy_contract(
         client,
         name="con_bootstrap_smoke",
-        source_file="stable_token.s.py",
+        source_file="con_stable_token.s.py",
         args={"token_name": "Smoke", "token_symbol": "SMK"},
         chi=12345,
     )
@@ -97,7 +97,7 @@ def test_deploy_contract_skips_existing_contract():
     contract, deployed = bootstrap._deploy_contract(
         client,
         name="con_existing",
-        source_file="stable_token.s.py",
+        source_file="con_stable_token.s.py",
         args={},
         chi=12345,
     )

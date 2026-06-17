@@ -30,7 +30,7 @@ def test_stable_token_supply_matches_tracked_balances_after_mint_transfer_burn(p
 
     tracked_balances = sum(
         protocol.stable_token.balance_of(address=account)
-        for account in ("vaults", "alice", "bob")
+        for account in ("con_vaults", "alice", "bob")
     )
     assert protocol.stable_token.total_supply_of() == 85
     assert protocol.stable_token.total_supply_of() == tracked_balances

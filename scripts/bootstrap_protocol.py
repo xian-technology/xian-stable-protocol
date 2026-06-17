@@ -375,7 +375,7 @@ def _ensure_sample_token(
     contract, _ = _deploy_contract(
         client,
         name=name,
-        source_file="stable_token.s.py",
+        source_file="con_stable_token.s.py",
         args={
             "token_name": token_name,
             "token_symbol": token_symbol,
@@ -679,7 +679,7 @@ def main(argv: list[str] | None = None) -> int:
         stable_token, _ = _deploy_contract(
             client,
             name=config.stable_token_contract_name,
-            source_file="stable_token.s.py",
+            source_file="con_stable_token.s.py",
             args={
                 "token_name": config.stable_token_name,
                 "token_symbol": config.stable_token_symbol,
@@ -724,14 +724,14 @@ def main(argv: list[str] | None = None) -> int:
         oracle, _ = _deploy_contract(
             client,
             name=config.oracle_contract_name,
-            source_file="oracle.s.py",
+            source_file="con_oracle.s.py",
             args={"governor_address": config.governor_address},
             chi=config.deploy_chi,
         )
         savings, _ = _deploy_contract(
             client,
             name=config.savings_contract_name,
-            source_file="savings.s.py",
+            source_file="con_savings.s.py",
             args={
                 "stable_token_contract_name": config.stable_token_contract_name,
                 "governor_address": config.governor_address,
@@ -741,7 +741,7 @@ def main(argv: list[str] | None = None) -> int:
         vaults, _ = _deploy_contract(
             client,
             name=config.vaults_contract_name,
-            source_file="vaults.s.py",
+            source_file="con_vaults.s.py",
             args={
                 "stable_token_contract_name": config.stable_token_contract_name,
                 "oracle_contract_name": config.oracle_contract_name,
@@ -754,7 +754,7 @@ def main(argv: list[str] | None = None) -> int:
         psm, _ = _deploy_contract(
             client,
             name=config.psm_contract_name,
-            source_file="psm.s.py",
+            source_file="con_psm.s.py",
             args={
                 "stable_token_contract_name": config.stable_token_contract_name,
                 "reserve_token_contract_name": config.reserve_contract_name,

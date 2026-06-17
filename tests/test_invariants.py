@@ -6,9 +6,9 @@ TRACKED_ACCOUNTS = (
     "alice",
     "bob",
     "carol",
-    "vaults",
-    "psm",
-    "savings",
+    "con_vaults",
+    "con_psm",
+    "con_savings",
     "treasury",
     "governor",
 )
@@ -28,10 +28,10 @@ def _assert_psm_reserves_are_accounted(protocol, expected_total_reserve: float) 
     reserve_balances = sum(_balance(protocol.reserve_token, account) for account in TRACKED_ACCOUNTS)
 
     assert float(psm_state["reserve_balance"]) == pytest.approx(
-        _balance(protocol.reserve_token, "psm")
+        _balance(protocol.reserve_token, "con_psm")
     )
     assert reserve_balances == pytest.approx(expected_total_reserve)
-    assert _balance(protocol.reserve_token, "psm") >= 0
+    assert _balance(protocol.reserve_token, "con_psm") >= 0
     assert _balance(protocol.reserve_token, "treasury") >= 0
 
 
@@ -67,7 +67,7 @@ def test_psm_deterministic_operation_sequence_preserves_accounting(protocol):
         _balance(protocol.reserve_token, account) for account in TRACKED_ACCOUNTS
     )
 
-    protocol.reserve_token.approve(amount=1_000, to="psm", signer="alice")
+    protocol.reserve_token.approve(amount=1_000, to="con_psm", signer="alice")
 
     for _ in range(40):
         mint_amount = rng.randint(1, 35)
@@ -78,11 +78,11 @@ def test_psm_deterministic_operation_sequence_preserves_accounting(protocol):
             )
 
         stable_balance = _balance(protocol.stable_token, "alice")
-        if stable_balance > 2 and _balance(protocol.reserve_token, "psm") > 2:
+        if stable_balance > 2 and _balance(protocol.reserve_token, "con_psm") > 2:
             redeem_amount = min(stable_balance, rng.randint(1, int(stable_balance)))
             protocol.stable_token.approve(
                 amount=redeem_amount,
-                to="psm",
+                to="con_psm",
                 signer="alice",
             )
             protocol.psm.redeem_stable(
@@ -99,7 +99,7 @@ def test_vault_deterministic_operation_sequence_preserves_accounting(protocol):
     vault_ids: list[int] = []
 
     for owner in ("alice", "bob", "carol"):
-        protocol.stable_token.approve(amount=10_000, to="vaults", signer=owner)
+        protocol.stable_token.approve(amount=10_000, to="con_vaults", signer=owner)
         vault_ids.append(
             protocol.vaults.create_vault(
                 vault_type_id=protocol.vault_type_id,

@@ -58,20 +58,20 @@ def protocol(tmp_path):
     )
     stable_token = submit_contract(
         client,
-        "stable_token",
-        "stable_token.s.py",
+        "con_stable_token",
+        "con_stable_token.s.py",
         {
             "token_name": "Xian Dollar",
             "token_symbol": "xUSD",
             "initial_supply": 0,
-            "initial_holder": "vaults",
+            "initial_holder": "con_vaults",
             "governor_address": "governor",
         },
     )
     collateral_token = submit_contract(
         client,
-        "collateral_token",
-        "stable_token.s.py",
+        "con_collateral_token",
+        "con_stable_token.s.py",
         {
             "token_name": "Collateral Token",
             "token_symbol": "COL",
@@ -82,8 +82,8 @@ def protocol(tmp_path):
     )
     reserve_token = submit_contract(
         client,
-        "reserve_token",
-        "stable_token.s.py",
+        "con_reserve_token",
+        "con_stable_token.s.py",
         {
             "token_name": "Reserve Dollar",
             "token_symbol": "rUSD",
@@ -94,38 +94,38 @@ def protocol(tmp_path):
     )
     oracle = submit_contract(
         client,
-        "oracle",
-        "oracle.s.py",
+        "con_oracle",
+        "con_oracle.s.py",
         {"governor_address": "governor"},
     )
     savings = submit_contract(
         client,
-        "savings",
-        "savings.s.py",
+        "con_savings",
+        "con_savings.s.py",
         {
-            "stable_token_contract_name": "stable_token",
+            "stable_token_contract_name": "con_stable_token",
             "governor_address": "governor",
         },
     )
     vaults = submit_contract(
         client,
-        "vaults",
-        "vaults.s.py",
+        "con_vaults",
+        "con_vaults.s.py",
         {
-            "stable_token_contract_name": "stable_token",
-            "oracle_contract_name": "oracle",
+            "stable_token_contract_name": "con_stable_token",
+            "oracle_contract_name": "con_oracle",
             "governor_address": "governor",
-            "savings_contract_name": "savings",
+            "savings_contract_name": "con_savings",
             "treasury_address_value": "treasury",
         },
     )
     psm = submit_contract(
         client,
-        "psm",
-        "psm.s.py",
+        "con_psm",
+        "con_psm.s.py",
         {
-            "stable_token_contract_name": "stable_token",
-            "reserve_token_contract_name": "reserve_token",
+            "stable_token_contract_name": "con_stable_token",
+            "reserve_token_contract_name": "con_reserve_token",
             "governor_address": "governor",
             "treasury_address_value": "treasury",
             "mint_fee_bps_value": 100,
@@ -134,12 +134,12 @@ def protocol(tmp_path):
     )
 
     stable_token.set_controller(
-        account="vaults", enabled=True, signer="governor"
+        account="con_vaults", enabled=True, signer="governor"
     )
     stable_token.set_controller(
         account="governor", enabled=True, signer="governor"
     )
-    stable_token.set_controller(account="psm", enabled=True, signer="governor")
+    stable_token.set_controller(account="con_psm", enabled=True, signer="governor")
     reserve_token.set_controller(
         account="governor", enabled=True, signer="governor"
     )
@@ -153,7 +153,7 @@ def protocol(tmp_path):
     oracle.submit_price(asset="COL", price=2, signer="governor")
 
     vault_type_id = vaults.add_vault_type(
-        collateral_contract_name="collateral_token",
+        collateral_contract_name="con_collateral_token",
         oracle_key="COL",
         min_collateral_ratio_bps=15000,
         liquidation_ratio_bps=13000,
@@ -172,7 +172,7 @@ def protocol(tmp_path):
 
     for account in ("alice", "bob", "carol"):
         collateral_token.transfer(to=account, amount=1_000)
-        collateral_token.approve(to="vaults", amount=1_000, signer=account)
+        collateral_token.approve(to="con_vaults", amount=1_000, signer=account)
         reserve_token.transfer(to=account, amount=1_000)
 
     return SimpleNamespace(

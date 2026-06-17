@@ -17,22 +17,21 @@ into both a savings pool and an explicit surplus buffer.
 - the repo includes local harness contracts for standalone tests, but the target
   runtime is the real chain governance system
 
-### `stable_token`
+### `con_stable_token`
 
 - standard fungible token
 - governor-managed controller allowlist
-- intended controllers: `vaults` and `psm`
-- live-chain deployments use `con_stable_token`, `con_vaults`, and `con_psm`
+- intended controllers: `con_vaults` and `con_psm`
 - users can burn their own balance
 
-### `oracle`
+### `con_oracle`
 
 - governor-managed reporter allowlist
 - per-asset quorum and freshness configuration
 - medianized price selection across fresh reports
 - still a committee-governed oracle, not a trustless feed
 
-### `psm`
+### `con_psm`
 
 - peg stability module for reserve-backed mint and redeem flows
 - symmetric 1:1 style conversions with configurable mint and redeem fees
@@ -41,7 +40,7 @@ into both a savings pool and an explicit surplus buffer.
   `con_reserve_token`
 - provides a clean redeem path without touching CDP collateral
 
-### `vaults`
+### `con_vaults`
 
 - vault type registry
 - user vault lifecycle
@@ -49,12 +48,12 @@ into both a savings pool and an explicit surplus buffer.
 - partial liquidation when a vault can be restored safely
 - auction liquidation when partial cure cannot restore the vault
 - auction cure and auction cancellation when the vault becomes safe again
-- fee routing to `savings`, `treasury`, or `governor`
-- live-chain deployments typically use `con_vaults`, `con_savings`, and a
-  collateral asset such as `con_collateral_token`
+- fee routing to `con_savings`, `treasury`, or `governor`
+- live-chain deployments typically use a collateral asset such as
+  `con_collateral_token`
 - explicit surplus buffer, bad debt accounting, and recapitalization hooks
 
-### `savings`
+### `con_savings`
 
 - share-based vault for the protocol stable asset
 - deposits mint shares against current asset/share ratio

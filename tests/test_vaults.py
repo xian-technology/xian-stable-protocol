@@ -15,7 +15,7 @@ def test_create_and_close_vault_routes_fees_to_savings_and_surplus(protocol):
     )
 
     protocol.stable_token.mint(amount=10, to="alice", signer="governor")
-    protocol.stable_token.approve(amount=200, to="vaults", signer="alice")
+    protocol.stable_token.approve(amount=200, to="con_vaults", signer="alice")
 
     returned_collateral = protocol.vaults.close_vault(
         vault_id=vault_id,
@@ -59,7 +59,7 @@ def test_fast_liquidation_performs_partial_cure(protocol):
     )
     protocol.oracle.submit_price(asset="COL", price=1.2, signer="governor")
     protocol.stable_token.mint(amount=100, to="bob", signer="governor")
-    protocol.stable_token.approve(amount=100, to="vaults", signer="bob")
+    protocol.stable_token.approve(amount=100, to="con_vaults", signer="bob")
 
     quote = protocol.vaults.get_liquidation_quote(vault_id=vault_id)
     collateral_paid = protocol.vaults.liquidate_fast(
@@ -86,7 +86,7 @@ def test_auction_can_be_cured_by_owner_before_bids(protocol):
         signer="alice",
     )
     protocol.oracle.submit_price(asset="COL", price=0.5, signer="governor")
-    protocol.stable_token.approve(amount=100, to="vaults", signer="alice")
+    protocol.stable_token.approve(amount=100, to="con_vaults", signer="alice")
 
     protocol.vaults.open_liquidation_auction(vault_id=vault_id, signer="bob")
     remaining_debt = protocol.vaults.cure_auction(
@@ -146,8 +146,8 @@ def test_auction_extends_records_bad_debt_and_allows_loser_refund(protocol):
     protocol.oracle.submit_price(asset="COL", price=0.5, signer="governor")
     protocol.stable_token.mint(amount=100, to="bob", signer="governor")
     protocol.stable_token.mint(amount=100, to="carol", signer="governor")
-    protocol.stable_token.approve(amount=100, to="vaults", signer="bob")
-    protocol.stable_token.approve(amount=100, to="vaults", signer="carol")
+    protocol.stable_token.approve(amount=100, to="con_vaults", signer="bob")
+    protocol.stable_token.approve(amount=100, to="con_vaults", signer="carol")
 
     protocol.vaults.open_liquidation_auction(
         vault_id=vault_id,
@@ -201,7 +201,7 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
         environment=fee_start,
     )
     protocol.stable_token.mint(amount=10, to="alice", signer="governor")
-    protocol.stable_token.approve(amount=200, to="vaults", signer="alice")
+    protocol.stable_token.approve(amount=200, to="con_vaults", signer="alice")
     protocol.vaults.close_vault(
         vault_id=fee_vault_id,
         signer="alice",
@@ -219,7 +219,7 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
     )
     protocol.oracle.submit_price(asset="COL", price=0.5, signer="governor")
     protocol.stable_token.mint(amount=100, to="carol", signer="governor")
-    protocol.stable_token.approve(amount=100, to="vaults", signer="carol")
+    protocol.stable_token.approve(amount=100, to="con_vaults", signer="carol")
 
     protocol.vaults.open_liquidation_auction(
         vault_id=auction_vault_id,
@@ -242,7 +242,7 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
         vault_type_id=protocol.vault_type_id
     )
     protocol.stable_token.mint(amount=10, to="carol", signer="governor")
-    protocol.stable_token.approve(amount=10, to="vaults", signer="carol")
+    protocol.stable_token.approve(amount=10, to="con_vaults", signer="carol")
     recapitalized = protocol.vaults.recapitalize(
         vault_type_id=protocol.vault_type_id,
         amount=10,

@@ -10,7 +10,7 @@ def test_xian_governance_can_take_control_of_protocol_contracts(protocol):
     start = {"now": Datetime(year=2026, month=1, day=1)}
 
     proposal = protocol.governance.propose_contract_call(
-        target_contract="oracle",
+        target_contract="con_oracle",
         target_function="accept_governance",
         summary="Move oracle to Xian governance",
         signer="alice",
@@ -32,7 +32,7 @@ def test_xian_governance_can_take_control_of_protocol_contracts(protocol):
     reporter_proposal_start = {"now": Datetime(year=2026, month=1, day=3)}
 
     reporter_proposal = protocol.governance.propose_contract_call(
-        target_contract="oracle",
+        target_contract="con_oracle",
         target_function="set_reporter",
         kwargs={"account": "oracle_2", "enabled": True},
         summary="Add second oracle reporter",
@@ -59,7 +59,7 @@ def test_xian_governance_can_update_protocol_risk_parameters(protocol):
     start = {"now": Datetime(year=2026, month=2, day=1)}
 
     accept = protocol.governance.propose_contract_call(
-        target_contract="vaults",
+        target_contract="con_vaults",
         target_function="accept_governance",
         summary="Move vault engine to Xian governance",
         signer="alice",
@@ -73,7 +73,7 @@ def test_xian_governance_can_update_protocol_risk_parameters(protocol):
     )
 
     fee_change = protocol.governance.propose_contract_call(
-        target_contract="vaults",
+        target_contract="con_vaults",
         target_function="set_vault_type_fee",
         kwargs={
             "vault_type_id": protocol.vault_type_id,

@@ -2,10 +2,10 @@ import pytest
 
 
 def test_psm_mint_and_redeem_apply_fees(protocol):
-    protocol.reserve_token.approve(amount=100, to="psm", signer="alice")
+    protocol.reserve_token.approve(amount=100, to="con_psm", signer="alice")
 
     mint_quote = protocol.psm.mint_stable(reserve_amount=100, signer="alice")
-    protocol.stable_token.approve(amount=50, to="psm", signer="alice")
+    protocol.stable_token.approve(amount=50, to="con_psm", signer="alice")
     redeem_quote = protocol.psm.redeem_stable(stable_amount=50, signer="alice")
 
     assert mint_quote["stable_out"] == pytest.approx(99)
@@ -26,7 +26,7 @@ def test_psm_mint_and_redeem_apply_fees(protocol):
 
 def test_psm_pause_blocks_mint_and_redeem(protocol):
     protocol.psm.set_paused(value=True, signer="governor")
-    protocol.reserve_token.approve(amount=10, to="psm", signer="alice")
+    protocol.reserve_token.approve(amount=10, to="con_psm", signer="alice")
 
     with pytest.raises(AssertionError):
         protocol.psm.mint_stable(reserve_amount=10, signer="alice")

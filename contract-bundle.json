@@ -12,41 +12,41 @@
   },
   "contracts": [
     {
-      "name": "stable_token",
+      "name": "con_stable_token",
       "role": "stable_token",
-      "path": "contracts/stable_token.s.py",
+      "path": "contracts/con_stable_token.s.py",
       "sha256": "04455d1d58670ceaa03f61617cf59f65ec20ed367613b68cc31f0563cf0ca6a4",
       "deploy_order": 10,
       "default_chi": 200000
     },
     {
-      "name": "oracle",
+      "name": "con_oracle",
       "role": "oracle",
-      "path": "contracts/oracle.s.py",
+      "path": "contracts/con_oracle.s.py",
       "sha256": "8c3177c8b1f0cece7fd609fed0cbd866d25af0f33794f8c78aad7fdacbee542b",
       "deploy_order": 20,
       "default_chi": 200000
     },
     {
-      "name": "savings",
+      "name": "con_savings",
       "role": "savings",
-      "path": "contracts/savings.s.py",
+      "path": "contracts/con_savings.s.py",
       "sha256": "6668427847952cf2daae1801a29f8f916ba067030d472cc4cbb72b12ed5d8d48",
       "deploy_order": 30,
       "default_chi": 240000
     },
     {
-      "name": "vaults",
+      "name": "con_vaults",
       "role": "vaults",
-      "path": "contracts/vaults.s.py",
+      "path": "contracts/con_vaults.s.py",
       "sha256": "65a840343a5159fa91526c605f6ad77bd648e2f7d9518c33812612f749b01c70",
       "deploy_order": 40,
       "default_chi": 320000
     },
     {
-      "name": "psm",
+      "name": "con_psm",
       "role": "psm",
-      "path": "contracts/psm.s.py",
+      "path": "contracts/con_psm.s.py",
       "sha256": "0472d4588192053e2587814c55df1148c6bbe92c53c0b69ab7981b00fd829095",
       "deploy_order": 50,
       "default_chi": 240000
