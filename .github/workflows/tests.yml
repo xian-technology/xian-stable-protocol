@@ -9,22 +9,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out xian-stable-protocol
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: xian-stable-protocol
 
       - name: Check out xian-contracting
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/xian-contracting
           ref: main
           path: xian-contracting
 
       - name: Use matching xian-contracting branch when available
+        env:
+          MATCHING_BRANCH: ${{ github.head_ref || github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
-          BRANCH="${{ github.head_ref || github.ref_name }}"
+          BRANCH="${MATCHING_BRANCH}"
           REMOTE="https://github.com/${{ github.repository_owner }}/xian-contracting"
           if git ls-remote --exit-code --heads "$REMOTE" "$BRANCH" >/dev/null 2>&1; then
             git -C xian-contracting fetch --depth=1 origin "$BRANCH"
@@ -32,13 +34,13 @@ jobs:
           fi
 
       - name: Check out xian-py
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/xian-py
           ref: main
           path: xian-py
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8
         with:
           python-version: "3.14"
       - name: Sync dependencies
