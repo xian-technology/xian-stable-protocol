@@ -102,5 +102,7 @@ cleaner.
 - governance still depends on the current Xian governance surface and its contract-call model, so future chain-governance changes need to be tracked
 - auctions are English auctions and still need better keeper ergonomics
 - there is no native collateral redemption path across vault types
-- there are no invariant or fuzz tests yet
+- deterministic operation-sequence, fee-accrual matrix, and seeded auction
+  settlement invariants run against the local Contracting VM; live-network
+  invariant testing is still pending
 - there are no live-network integration tests yet
