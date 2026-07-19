@@ -1,6 +1,7 @@
 from random import Random
 
 import pytest
+from xian_runtime_types.time import Datetime
 
 TRACKED_ACCOUNTS = (
     "alice",
@@ -25,7 +26,9 @@ def _assert_stable_supply_is_accounted(protocol) -> None:
 
 def _assert_psm_reserves_are_accounted(protocol, expected_total_reserve: float) -> None:
     psm_state = protocol.psm.get_state()
-    reserve_balances = sum(_balance(protocol.reserve_token, account) for account in TRACKED_ACCOUNTS)
+    reserve_balances = sum(
+        _balance(protocol.reserve_token, account) for account in TRACKED_ACCOUNTS
+    )
 
     assert float(psm_state["reserve_balance"]) == pytest.approx(
         _balance(protocol.reserve_token, "con_psm")
@@ -36,9 +39,7 @@ def _assert_psm_reserves_are_accounted(protocol, expected_total_reserve: float) 
 
 
 def _assert_vault_accounting(protocol, vault_ids: list[int]) -> None:
-    vault_type = protocol.vaults.get_vault_type(
-        vault_type_id=protocol.vault_type_id
-    )
+    vault_type = protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)
     live_principal = 0.0
     live_debt = 0.0
     min_ratio = float(vault_type["min_collateral_ratio_bps"])
@@ -55,9 +56,7 @@ def _assert_vault_accounting(protocol, vault_ids: list[int]) -> None:
         live_principal += float(vault["principal"])
         live_debt += float(vault["debt"])
 
-    assert float(vault_type["live_principal_outstanding"]) == pytest.approx(
-        live_principal
-    )
+    assert float(vault_type["live_principal_outstanding"]) == pytest.approx(live_principal)
     assert float(vault_type["live_debt_outstanding"]) == pytest.approx(live_debt)
 
 
@@ -152,3 +151,108 @@ def test_vault_deterministic_operation_sequence_preserves_accounting(protocol):
 
         _assert_vault_accounting(protocol, vault_ids)
         _assert_stable_supply_is_accounted(protocol)
+
+
+@pytest.mark.parametrize(
+    ("end_time", "elapsed_seconds"),
+    (
+        (Datetime(year=2026, month=1, day=2), 86_400),
+        (Datetime(year=2026, month=2, day=1), 31 * 86_400),
+        (Datetime(year=2026, month=7, day=1), 181 * 86_400),
+        (Datetime(year=2027, month=1, day=1), 365 * 86_400),
+    ),
+)
+def test_fee_accrual_routes_and_accounts_for_every_minted_token(
+    protocol,
+    end_time,
+    elapsed_seconds,
+):
+    principal = 100
+    start = {"now": Datetime(year=2026, month=1, day=1)}
+    end = {"now": end_time}
+    vault_id = protocol.vaults.create_vault(
+        vault_type_id=protocol.vault_type_id,
+        collateral_amount=100,
+        debt_amount=principal,
+        signer="alice",
+        environment=start,
+    )
+    expected_fee = principal * 500 / 10_000 * elapsed_seconds / (365 * 86_400)
+
+    # Fund a small buffer because contract decimals intentionally do not share
+    # Python's binary-float rounding at every intermediate step.
+    protocol.stable_token.mint(amount=expected_fee + 1, to="alice", signer="governor")
+    protocol.stable_token.approve(
+        amount=principal + expected_fee + 1,
+        to="con_vaults",
+        signer="alice",
+    )
+    protocol.vaults.close_vault(
+        vault_id=vault_id,
+        signer="alice",
+        environment=end,
+    )
+
+    vault_type = protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)
+    assert float(protocol.savings.total_assets()) == pytest.approx(expected_fee * 0.8)
+    assert float(vault_type["surplus_buffer"]) == pytest.approx(expected_fee * 0.2)
+    assert float(vault_type["live_principal_outstanding"]) == pytest.approx(0)
+    assert float(vault_type["live_debt_outstanding"]) == pytest.approx(0)
+    _assert_stable_supply_is_accounted(protocol)
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_auction_settlement_fuzz_preserves_debt_and_supply_accounting(
+    protocol,
+    seed,
+):
+    rng = Random(seed)
+    winning_bid = rng.randint(1, 150)
+    start = {"now": Datetime(year=2026, month=1, day=1)}
+    end = {"now": Datetime(year=2026, month=1, day=2, second=1)}
+
+    vault_id = protocol.vaults.create_vault(
+        vault_type_id=protocol.vault_type_id,
+        collateral_amount=100,
+        debt_amount=100,
+        signer="alice",
+        environment=start,
+    )
+    protocol.oracle.submit_price(asset="COL", price=0.5, signer="governor")
+    protocol.stable_token.mint(amount=winning_bid, to="bob", signer="governor")
+    protocol.stable_token.approve(
+        amount=winning_bid,
+        to="con_vaults",
+        signer="bob",
+    )
+    protocol.vaults.open_liquidation_auction(
+        vault_id=vault_id,
+        signer="carol",
+        environment=start,
+    )
+    protocol.vaults.bid(
+        vault_id=vault_id,
+        bid_amount=winning_bid,
+        signer="bob",
+        environment=start,
+    )
+    supply_before_settlement = float(protocol.stable_token.total_supply_of())
+
+    settlement = protocol.vaults.settle_auction(
+        vault_id=vault_id,
+        signer="carol",
+        environment=end,
+    )
+    vault_type = protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)
+
+    principal_paid = min(winning_bid, 100)
+    assert float(settlement["bad_debt"]) == pytest.approx(max(100 - winning_bid, 0))
+    assert float(vault_type["bad_debt"]) == pytest.approx(max(100 - winning_bid, 0))
+    assert float(vault_type["auction_debt_locked"]) == pytest.approx(0)
+    assert float(vault_type["auction_principal_locked"]) == pytest.approx(0)
+    assert float(protocol.stable_token.total_supply_of()) == pytest.approx(
+        supply_before_settlement - principal_paid
+    )
+    assert float(protocol.stable_token.balance_of(address="con_vaults")) == pytest.approx(0)
+    assert float(protocol.collateral_token.balance_of(address="bob")) == pytest.approx(1_100)
+    _assert_stable_supply_is_accounted(protocol)
