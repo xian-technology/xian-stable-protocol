@@ -33,6 +33,27 @@ jobs:
             git -C xian-contracting checkout -B "$BRANCH" FETCH_HEAD
           fi
 
+      - name: Check out xian-cli
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/xian-cli
+          ref: main
+          path: xian-cli
+
+      - name: Check out xian-abci
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/xian-abci
+          ref: main
+          path: xian-abci
+
+      - name: Check out xian-meta
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/xian-meta
+          ref: main
+          path: xian-meta
+
       - name: Check out xian-py
         uses: actions/checkout@v7
         with:
@@ -43,9 +64,12 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.14"
+      - name: Report resolved sibling SHAs
+        run: python xian-meta/scripts/report_workspace_shas.py --workspace-root .
+
       - name: Sync dependencies
         working-directory: xian-stable-protocol
-        run: uv sync --locked --group dev
+        run: uv sync --locked --group dev --group deploy
       - name: Audit authored contract conformance coverage
         working-directory: xian-stable-protocol
         run: |
@@ -55,4 +79,4 @@ jobs:
             --fail-on-issues
       - name: Run tests
         working-directory: xian-stable-protocol
-        run: uv run pytest -q
+        run: uv run --locked --group deploy pytest -q

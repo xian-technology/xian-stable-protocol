@@ -33,9 +33,9 @@ hardening work is tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
 ## Quick Start
 
 ```bash
-uv sync --group dev --group deploy
-uv run pytest -q
-uv run python scripts/bootstrap_protocol.py --no-start-governance-handoff
+uv sync --locked --group dev --group deploy
+uv run --group deploy pytest -q
+uv run --group deploy python scripts/bootstrap_protocol.py --no-start-governance-handoff
 ```
 
 The bootstrap script:
@@ -59,7 +59,7 @@ through the chain `governance` contract. If handoff was skipped for local
 testing, start it later with:
 
 ```bash
-uv run python scripts/bootstrap_protocol.py
+uv run --group deploy python scripts/bootstrap_protocol.py
 ```
 
 This only *starts* transfer to the chain `governance` contract.
@@ -161,17 +161,29 @@ bootstrap flow:
 
 - `contract-bundle.json` is the hash-pinned deployment bundle for this repo.
 - `scripts/bootstrap_protocol.py` is the canonical operator bootstrap script.
-- `xian-cli` can validate the bundle and submit generated artifacts, but it does
+- `xian-cli` can validate the bundle and submit contract source, but it does
   not catalog or install products.
 
 Run the bootstrap after the target network is deployed and healthy. Network
 manifests and node setup stay in `xian-configs`; protocol deployment stays here.
 
+## Bootstrap validation
+
+The bootstrap validates `contract-bundle.json` before connecting to the node,
+loads the verified sources once, and follows the bundle's deployment order and
+chi defaults. Use `--bundle` to select another validated bundle. Product-specific
+constructor settings remain in the bootstrap script. The `deploy` group includes
+`xian-tech-cli` for shared validation and `xian-tech-py>=0.5.0,<0.6` for source
+submission.
+
+Set `XIAN_STABLE_DEPLOY_CHI` only to override all bundle deployment budgets.
+Sample tokens reuse the validated stable-token source.
+
 ## Validation
 
 ```bash
-uv sync --group dev
-uv run pytest -q
+uv sync --locked --group dev --group deploy
+uv run --group deploy pytest -q
 ```
 
 The tests cover:

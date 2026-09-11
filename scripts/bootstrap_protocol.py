@@ -10,11 +10,12 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from xian_cli.contract_bundles import read_contract_source_from_bundle, validate_contract_bundle
 from xian_py import RetryPolicy, Wallet, Xian, XianClientConfig
 from xian_py.models import TransactionSubmission
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACTS_DIR = ROOT / "contracts"
+DEFAULT_BUNDLE = ROOT / "contract-bundle.json"
 DEFAULT_GOVERNANCE_CONTRACT = "governance"
 DEFAULT_MEMBERSHIP_CONTRACT = "validators"
 DEFAULT_STABLE_TOKEN_CONTRACT = "con_stable_token"
@@ -68,7 +69,7 @@ class BootstrapConfig:
     bid_extension_seconds: int
     mint_fee_bps: int
     redeem_fee_bps: int
-    deploy_chi: int
+    deploy_chi: int | None
     tx_chi: int
 
 
@@ -116,23 +117,14 @@ def _env_list(name: str, default: list[str]) -> list[str]:
 def _require_wallet() -> Wallet:
     private_key = os.environ.get("XIAN_WALLET_PRIVATE_KEY")
     if not private_key:
-        raise RuntimeError(
-            "XIAN_WALLET_PRIVATE_KEY is required to bootstrap the protocol."
-        )
+        raise RuntimeError("XIAN_WALLET_PRIVATE_KEY is required to bootstrap the protocol.")
     return Wallet(private_key=private_key)
-
-
-def _contract_source(file_name: str) -> str:
-    return (CONTRACTS_DIR / file_name).read_text(encoding="utf-8")
 
 
 def _require_user_contract_name(label: str, value: str) -> None:
     if value.startswith("con_"):
         return
-    raise RuntimeError(
-        f"{label} must start with 'con_' on current Xian networks; got "
-        f"{value!r}."
-    )
+    raise RuntimeError(f"{label} must start with 'con_' on current Xian networks; got {value!r}.")
 
 
 def _ensure_submission_succeeded(
@@ -191,9 +183,7 @@ def _load_config(wallet: Wallet) -> BootstrapConfig:
     operator_address = wallet.public_key
     governor_address = _env_str("XIAN_STABLE_GOVERNOR", operator_address)
     treasury_address = _env_str("XIAN_STABLE_TREASURY", operator_address)
-    oracle_reporters = _env_list(
-        "XIAN_STABLE_ORACLE_REPORTERS", [operator_address]
-    )
+    oracle_reporters = _env_list("XIAN_STABLE_ORACLE_REPORTERS", [operator_address])
     return BootstrapConfig(
         node_url=_env_str("XIAN_NODE_URL", "http://127.0.0.1:26657"),
         chain_id=os.environ.get("XIAN_CHAIN_ID"),
@@ -238,59 +228,37 @@ def _load_config(wallet: Wallet) -> BootstrapConfig:
             "XIAN_STABLE_RESERVE_CONTRACT",
             DEFAULT_RESERVE_CONTRACT,
         ),
-        collateral_token_name=_env_str(
-            "XIAN_STABLE_COLLATERAL_NAME", "Collateral Token"
-        ),
-        collateral_token_symbol=_env_str(
-            "XIAN_STABLE_COLLATERAL_SYMBOL", "COL"
-        ),
-        reserve_token_name=_env_str(
-            "XIAN_STABLE_RESERVE_NAME", "Reserve Dollar"
-        ),
+        collateral_token_name=_env_str("XIAN_STABLE_COLLATERAL_NAME", "Collateral Token"),
+        collateral_token_symbol=_env_str("XIAN_STABLE_COLLATERAL_SYMBOL", "COL"),
+        reserve_token_name=_env_str("XIAN_STABLE_RESERVE_NAME", "Reserve Dollar"),
         reserve_token_symbol=_env_str("XIAN_STABLE_RESERVE_SYMBOL", "rUSD"),
-        sample_token_supply=_env_numeric(
-            "XIAN_STABLE_SAMPLE_TOKEN_SUPPLY", 1_000_000
-        ),
+        sample_token_supply=_env_numeric("XIAN_STABLE_SAMPLE_TOKEN_SUPPLY", 1_000_000),
         asset_key=_env_str("XIAN_STABLE_ASSET_KEY", "COL"),
         asset_price=_env_numeric("XIAN_STABLE_ASSET_PRICE", 2),
-        min_reporters_required=_env_int(
-            "XIAN_STABLE_MIN_REPORTERS_REQUIRED", 1
-        ),
-        max_price_age_seconds=_env_int(
-            "XIAN_STABLE_MAX_PRICE_AGE_SECONDS", 3600
-        ),
+        min_reporters_required=_env_int("XIAN_STABLE_MIN_REPORTERS_REQUIRED", 1),
+        max_price_age_seconds=_env_int("XIAN_STABLE_MAX_PRICE_AGE_SECONDS", 3600),
         oracle_reporters=oracle_reporters,
-        min_collateral_ratio_bps=_env_int(
-            "XIAN_STABLE_MIN_COLLATERAL_RATIO_BPS", 15000
-        ),
-        liquidation_ratio_bps=_env_int(
-            "XIAN_STABLE_LIQUIDATION_RATIO_BPS", 13000
-        ),
-        liquidation_bonus_bps=_env_int(
-            "XIAN_STABLE_LIQUIDATION_BONUS_BPS", 500
-        ),
+        min_collateral_ratio_bps=_env_int("XIAN_STABLE_MIN_COLLATERAL_RATIO_BPS", 15000),
+        liquidation_ratio_bps=_env_int("XIAN_STABLE_LIQUIDATION_RATIO_BPS", 13000),
+        liquidation_bonus_bps=_env_int("XIAN_STABLE_LIQUIDATION_BONUS_BPS", 500),
         partial_liquidation_target_ratio_bps=_env_int(
             "XIAN_STABLE_PARTIAL_TARGET_RATIO_BPS", 15000
         ),
         debt_ceiling=_env_numeric("XIAN_STABLE_DEBT_CEILING", 1_000_000),
         min_debt=_env_numeric("XIAN_STABLE_MIN_DEBT", 10),
         stability_fee_bps=_env_int("XIAN_STABLE_STABILITY_FEE_BPS", 500),
-        auction_duration_seconds=_env_int(
-            "XIAN_STABLE_AUCTION_DURATION_SECONDS", 86400
-        ),
+        auction_duration_seconds=_env_int("XIAN_STABLE_AUCTION_DURATION_SECONDS", 86400),
         surplus_buffer_bps=_env_int("XIAN_STABLE_SURPLUS_BUFFER_BPS", 2000),
-        min_bid_increment_bps=_env_int(
-            "XIAN_STABLE_MIN_BID_INCREMENT_BPS", 500
-        ),
-        extension_window_seconds=_env_int(
-            "XIAN_STABLE_EXTENSION_WINDOW_SECONDS", 3600
-        ),
-        bid_extension_seconds=_env_int(
-            "XIAN_STABLE_BID_EXTENSION_SECONDS", 3600
-        ),
+        min_bid_increment_bps=_env_int("XIAN_STABLE_MIN_BID_INCREMENT_BPS", 500),
+        extension_window_seconds=_env_int("XIAN_STABLE_EXTENSION_WINDOW_SECONDS", 3600),
+        bid_extension_seconds=_env_int("XIAN_STABLE_BID_EXTENSION_SECONDS", 3600),
         mint_fee_bps=_env_int("XIAN_STABLE_PSM_MINT_FEE_BPS", 100),
         redeem_fee_bps=_env_int("XIAN_STABLE_PSM_REDEEM_FEE_BPS", 50),
-        deploy_chi=_env_int("XIAN_STABLE_DEPLOY_CHI", 500_000),
+        deploy_chi=(
+            int(os.environ["XIAN_STABLE_DEPLOY_CHI"])
+            if os.environ.get("XIAN_STABLE_DEPLOY_CHI", "").strip()
+            else None
+        ),
         tx_chi=_env_int("XIAN_STABLE_TX_CHI", 200_000),
     )
 
@@ -327,7 +295,7 @@ def _deploy_contract(
     client: Xian,
     *,
     name: str,
-    source_file: str,
+    source: str,
     args: dict[str, Any],
     chi: int,
 ) -> tuple[Any, bool]:
@@ -336,7 +304,7 @@ def _deploy_contract(
         result = _ensure_submission_succeeded(
             client.deploy_contract(
                 name=name,
-                source=_contract_source(source_file),
+                source=source,
                 args=args,
                 **_budget_kwargs(client.deploy_contract, chi),
                 mode="checktx",
@@ -356,36 +324,7 @@ def _ensure_chain_governance(client: Xian, config: BootstrapConfig) -> None:
         config.governance_contract_name,
     ):
         if client.get_contract_source(contract_name) is None:
-            raise RuntimeError(
-                f"Required chain contract '{contract_name}' is missing."
-            )
-
-
-def _ensure_sample_token(
-    client: Xian,
-    *,
-    name: str,
-    token_name: str,
-    token_symbol: str,
-    supply: int | Decimal,
-    governor_address: str,
-    initial_holder: str,
-    deploy_chi: int,
-) -> Any:
-    contract, _ = _deploy_contract(
-        client,
-        name=name,
-        source_file="con_stable_token.s.py",
-        args={
-            "token_name": token_name,
-            "token_symbol": token_symbol,
-            "initial_supply": supply,
-            "initial_holder": initial_holder,
-            "governor_address": governor_address,
-        },
-        chi=deploy_chi,
-    )
-    return contract
+            raise RuntimeError(f"Required chain contract '{contract_name}' is missing.")
 
 
 def _maybe_set_controller(
@@ -415,9 +354,7 @@ def _maybe_set_controller(
     )
 
 
-def _ensure_oracle_state(
-    client: Xian, oracle: Any, config: BootstrapConfig
-) -> list[str]:
+def _ensure_oracle_state(client: Xian, oracle: Any, config: BootstrapConfig) -> list[str]:
     tx_hashes: list[str] = []
     tx_hashes.append(
         _send(
@@ -527,9 +464,7 @@ def _ensure_default_vault_type(
         min_debt=config.min_debt,
         stability_fee_bps=config.stability_fee_bps,
         auction_duration_seconds=config.auction_duration_seconds,
-        partial_liquidation_target_ratio_bps=(
-            config.partial_liquidation_target_ratio_bps
-        ),
+        partial_liquidation_target_ratio_bps=(config.partial_liquidation_target_ratio_bps),
         surplus_buffer_bps=config.surplus_buffer_bps,
         min_bid_increment_bps=config.min_bid_increment_bps,
         extension_window_seconds=config.extension_window_seconds,
@@ -591,21 +526,15 @@ def _snapshot_vault_type(
         "bad_debt",
     )
     return {
-        field: client.get_state(
-            contract_name, "vault_types", vault_type_id, field
-        )
+        field: client.get_state(contract_name, "vault_types", vault_type_id, field)
         for field in fields
     }
 
 
 def _snapshot_psm_state(client: Xian, contract_name: str) -> dict[str, Any]:
     return {
-        "stable_token_contract": client.get_state(
-            contract_name, "stable_token_contract"
-        ),
-        "reserve_token_contract": client.get_state(
-            contract_name, "reserve_token_contract"
-        ),
+        "stable_token_contract": client.get_state(contract_name, "stable_token_contract"),
+        "reserve_token_contract": client.get_state(contract_name, "reserve_token_contract"),
         "governor": client.get_state(contract_name, "governor"),
         "treasury_address": client.get_state(contract_name, "treasury_address"),
         "mint_fee_bps": client.get_state(contract_name, "mint_fee_bps"),
@@ -614,12 +543,102 @@ def _snapshot_psm_state(client: Xian, contract_name: str) -> dict[str, Any]:
     }
 
 
+def _build_deployment_plan(
+    bundle_path: Path, config: BootstrapConfig, *, skip_sample_tokens: bool
+) -> list[dict[str, Any]]:
+    bundle = validate_contract_bundle(bundle_path)
+    settings = {
+        "stable_token": (
+            config.stable_token_contract_name,
+            {
+                "token_name": config.stable_token_name,
+                "token_symbol": config.stable_token_symbol,
+                "initial_supply": 0,
+                "initial_holder": config.operator_address,
+                "governor_address": config.governor_address,
+            },
+        ),
+        "oracle": (config.oracle_contract_name, {"governor_address": config.governor_address}),
+        "savings": (
+            config.savings_contract_name,
+            {
+                "stable_token_contract_name": config.stable_token_contract_name,
+                "governor_address": config.governor_address,
+            },
+        ),
+        "vaults": (
+            config.vaults_contract_name,
+            {
+                "stable_token_contract_name": config.stable_token_contract_name,
+                "oracle_contract_name": config.oracle_contract_name,
+                "governor_address": config.governor_address,
+                "savings_contract_name": config.savings_contract_name,
+                "treasury_address_value": config.treasury_address,
+            },
+        ),
+        "psm": (
+            config.psm_contract_name,
+            {
+                "stable_token_contract_name": config.stable_token_contract_name,
+                "reserve_token_contract_name": config.reserve_contract_name,
+                "governor_address": config.governor_address,
+                "treasury_address_value": config.treasury_address,
+                "mint_fee_bps_value": config.mint_fee_bps,
+                "redeem_fee_bps_value": config.redeem_fee_bps,
+            },
+        ),
+    }
+    entries = {entry["role"]: entry for entry in bundle["contracts"]}
+    if not settings.keys() <= entries.keys():
+        raise ValueError(
+            f"Stable bundle is missing roles: {sorted(settings.keys() - entries.keys())}"
+        )
+    plan = []
+    for entry in bundle["contracts"]:
+        role = entry["role"]
+        if role not in settings:
+            continue
+        name, constructor_args = settings[role]
+        chi = config.deploy_chi if config.deploy_chi is not None else entry["default_chi"]
+        if chi is None or chi <= 0:
+            raise ValueError(f"{role} requires a positive chi budget")
+        source = read_contract_source_from_bundle(bundle_path, entry)
+        plan.append(dict(name=name, source=source, args=constructor_args, chi=chi))
+        if role == "stable_token" and not skip_sample_tokens:
+            for sample_name, token_name, token_symbol in (
+                (
+                    config.collateral_contract_name,
+                    config.collateral_token_name,
+                    config.collateral_token_symbol,
+                ),
+                (
+                    config.reserve_contract_name,
+                    config.reserve_token_name,
+                    config.reserve_token_symbol,
+                ),
+            ):
+                plan.append(
+                    dict(
+                        name=sample_name,
+                        source=source,
+                        chi=chi,
+                        args={
+                            "token_name": token_name,
+                            "token_symbol": token_symbol,
+                            "initial_supply": config.sample_token_supply,
+                            "initial_holder": config.operator_address,
+                            "governor_address": config.governor_address,
+                        },
+                    )
+                )
+    return plan
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description=(
-            "Deploy and wire the Xian stable protocol reference contracts."
-        )
+        description=("Deploy and wire the Xian stable protocol reference contracts.")
     )
+    parser.add_argument("--bundle", type=Path, default=DEFAULT_BUNDLE)
     parser.add_argument(
         "--skip-sample-tokens",
         action="store_true",
@@ -659,9 +678,9 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
 
-    client_config = XianClientConfig(
-        retry=RetryPolicy(max_attempts=3, initial_delay_seconds=0.25)
-    )
+    plan = _build_deployment_plan(args.bundle, config, skip_sample_tokens=args.skip_sample_tokens)
+
+    client_config = XianClientConfig(retry=RetryPolicy(max_attempts=3, initial_delay_seconds=0.25))
 
     with Xian(
         config.node_url,
@@ -671,100 +690,20 @@ def main(argv: list[str] | None = None) -> int:
     ) as client:
         _ensure_chain_governance(client, config)
         status = client.get_node_status()
-        print(
-            f"Connected to {status.network} at height "
-            f"{status.latest_block_height}"
-        )
-
-        stable_token, _ = _deploy_contract(
-            client,
-            name=config.stable_token_contract_name,
-            source_file="con_stable_token.s.py",
-            args={
-                "token_name": config.stable_token_name,
-                "token_symbol": config.stable_token_symbol,
-                "initial_supply": 0,
-                "initial_holder": config.operator_address,
-                "governor_address": config.governor_address,
-            },
-            chi=config.deploy_chi,
-        )
+        print(f"Connected to {status.network} at height {status.latest_block_height}")
 
         if args.skip_sample_tokens:
-            for name in (
-                config.collateral_contract_name,
-                config.reserve_contract_name,
-            ):
+            for name in (config.collateral_contract_name, config.reserve_contract_name):
                 if client.get_contract_source(name) is None:
-                    raise RuntimeError(
-                        f"Configured token contract '{name}' does not exist."
-                    )
-        else:
-            _ensure_sample_token(
-                client,
-                name=config.collateral_contract_name,
-                token_name=config.collateral_token_name,
-                token_symbol=config.collateral_token_symbol,
-                supply=config.sample_token_supply,
-                governor_address=config.governor_address,
-                initial_holder=config.operator_address,
-                deploy_chi=config.deploy_chi,
-            )
-            _ensure_sample_token(
-                client,
-                name=config.reserve_contract_name,
-                token_name=config.reserve_token_name,
-                token_symbol=config.reserve_token_symbol,
-                supply=config.sample_token_supply,
-                governor_address=config.governor_address,
-                initial_holder=config.operator_address,
-                deploy_chi=config.deploy_chi,
-            )
-
-        oracle, _ = _deploy_contract(
-            client,
-            name=config.oracle_contract_name,
-            source_file="con_oracle.s.py",
-            args={"governor_address": config.governor_address},
-            chi=config.deploy_chi,
-        )
-        savings, _ = _deploy_contract(
-            client,
-            name=config.savings_contract_name,
-            source_file="con_savings.s.py",
-            args={
-                "stable_token_contract_name": config.stable_token_contract_name,
-                "governor_address": config.governor_address,
-            },
-            chi=config.deploy_chi,
-        )
-        vaults, _ = _deploy_contract(
-            client,
-            name=config.vaults_contract_name,
-            source_file="con_vaults.s.py",
-            args={
-                "stable_token_contract_name": config.stable_token_contract_name,
-                "oracle_contract_name": config.oracle_contract_name,
-                "governor_address": config.governor_address,
-                "savings_contract_name": config.savings_contract_name,
-                "treasury_address_value": config.treasury_address,
-            },
-            chi=config.deploy_chi,
-        )
-        psm, _ = _deploy_contract(
-            client,
-            name=config.psm_contract_name,
-            source_file="con_psm.s.py",
-            args={
-                "stable_token_contract_name": config.stable_token_contract_name,
-                "reserve_token_contract_name": config.reserve_contract_name,
-                "governor_address": config.governor_address,
-                "treasury_address_value": config.treasury_address,
-                "mint_fee_bps_value": config.mint_fee_bps,
-                "redeem_fee_bps_value": config.redeem_fee_bps,
-            },
-            chi=config.deploy_chi,
-        )
+                    raise RuntimeError(f"Configured token contract '{name}' does not exist.")
+        deployed = {}
+        for item in plan:
+            deployed[item["name"]], _ = _deploy_contract(client, **item)
+        stable_token = deployed[config.stable_token_contract_name]
+        oracle = deployed[config.oracle_contract_name]
+        savings = deployed[config.savings_contract_name]
+        vaults = deployed[config.vaults_contract_name]
+        psm = deployed[config.psm_contract_name]
 
         tx_hashes: dict[str, list[str]] = {
             "controllers": [],
@@ -791,9 +730,7 @@ def main(argv: list[str] | None = None) -> int:
 
         tx_hashes["oracle"] = _ensure_oracle_state(client, oracle, config)
         tx_hashes["fee_routing"] = _ensure_fee_destinations(vaults, psm, config)
-        _, vault_type_tx_hash = _ensure_default_vault_type(
-            client, vaults, config
-        )
+        _, vault_type_tx_hash = _ensure_default_vault_type(client, vaults, config)
         if vault_type_tx_hash:
             tx_hashes["vault_type"].append(vault_type_tx_hash)
 

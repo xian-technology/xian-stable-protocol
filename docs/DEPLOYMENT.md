@@ -28,12 +28,12 @@ From this repository:
 
 ```bash
 uv sync --group dev --group deploy
-uv run pytest -q
-uv run python scripts/bootstrap_protocol.py --no-start-governance-handoff
+uv run --group deploy pytest -q
+uv run --group deploy python scripts/bootstrap_protocol.py --no-start-governance-handoff
 ```
 
 The `deploy` group expects the standard Xian workspace layout, including the
-sibling `xian-py` and `xian-contracting` checkouts.
+sibling `xian-py`, `xian-contracting`, `xian-cli`, and `xian-abci` checkouts.
 
 By default the bootstrap script also deploys sample
 `con_collateral_token` and `con_reserve_token` contracts so the local
@@ -61,7 +61,7 @@ export XIAN_CHAIN_ID=<remote-chain-id>
 export XIAN_WALLET_PRIVATE_KEY=<bootstrap-wallet>
 
 uv sync --group dev --group deploy
-uv run python scripts/bootstrap_protocol.py --skip-sample-tokens
+uv run --group deploy python scripts/bootstrap_protocol.py --skip-sample-tokens
 ```
 
 Use `--skip-sample-tokens` when the collateral and reserve token contracts
@@ -135,8 +135,11 @@ to run the script. The script starts handoff to the chain `governance`
 contract by default after deployment and wiring are complete. Use
 `--no-start-governance-handoff` only for disposable local testing.
 
-The bootstrap script supplies explicit chi budgets for writes so it can still
-run on network profiles where readonly simulation is disabled or unavailable.
+The bootstrap validates and loads all bundle sources before connecting. Its
+`--bundle` option defaults to `contract-bundle.json`. Deployment order and
+per-contract chi defaults come from that bundle; `XIAN_STABLE_DEPLOY_CHI`, when
+set, overrides every deployment budget. `XIAN_STABLE_TX_CHI` controls configuration
+writes. These explicit budgets also support profiles without readonly simulation.
 
 ## Governance Handoff
 
@@ -144,7 +147,7 @@ The bootstrap script starts governance transfer by default. Re-run it later
 without `--no-start-governance-handoff` if you explicitly skipped that step:
 
 ```bash
-uv run python scripts/bootstrap_protocol.py
+uv run --group deploy python scripts/bootstrap_protocol.py
 ```
 
 That sends `start_governance_transfer(new_governor='governance')` to:
