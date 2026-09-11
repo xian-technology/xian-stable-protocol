@@ -92,8 +92,6 @@ def test_xian_governance_can_update_protocol_risk_parameters(protocol):
 
     assert updated["status"] == "executed"
     assert (
-        protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)[
-            "stability_fee_bps"
-        ]
+        protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)["stability_fee_bps"]
         == 750
     )

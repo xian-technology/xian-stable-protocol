@@ -133,16 +133,10 @@ def protocol(tmp_path):
         },
     )
 
-    stable_token.set_controller(
-        account="con_vaults", enabled=True, signer="governor"
-    )
-    stable_token.set_controller(
-        account="governor", enabled=True, signer="governor"
-    )
+    stable_token.set_controller(account="con_vaults", enabled=True, signer="governor")
+    stable_token.set_controller(account="governor", enabled=True, signer="governor")
     stable_token.set_controller(account="con_psm", enabled=True, signer="governor")
-    reserve_token.set_controller(
-        account="governor", enabled=True, signer="governor"
-    )
+    reserve_token.set_controller(account="governor", enabled=True, signer="governor")
 
     oracle.set_asset_config(
         asset="COL",

@@ -13,12 +13,8 @@ def test_oracle_non_reporter_cannot_publish(protocol):
 
 
 def test_oracle_uses_median_with_quorum(protocol):
-    protocol.oracle.set_reporter(
-        account="oracle_2", enabled=True, signer="governor"
-    )
-    protocol.oracle.set_reporter(
-        account="oracle_3", enabled=True, signer="governor"
-    )
+    protocol.oracle.set_reporter(account="oracle_2", enabled=True, signer="governor")
+    protocol.oracle.set_reporter(account="oracle_3", enabled=True, signer="governor")
     protocol.oracle.set_asset_config(
         asset="BTC",
         min_reporters_required=2,
@@ -37,9 +33,7 @@ def test_oracle_freshness_limit_is_enforced(protocol):
     start = {"now": Datetime(year=2026, month=1, day=1)}
     later = {"now": Datetime(year=2026, month=1, day=3)}
 
-    protocol.oracle.set_reporter(
-        account="oracle_2", enabled=True, signer="governor"
-    )
+    protocol.oracle.set_reporter(account="oracle_2", enabled=True, signer="governor")
     protocol.oracle.set_asset_config(
         asset="COL",
         min_reporters_required=2,
