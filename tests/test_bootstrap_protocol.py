@@ -168,3 +168,21 @@ def test_plan_keeps_exact_validated_source(bundle_copy):
     bootstrap._deploy_contract(client, **plan[0])
     assert client.deployed["source"] == plan[0]["source"]
     assert "def seed(" in client.deployed["source"]
+
+
+def test_hybrid_bootstrap_preserves_original_owner(tmp_path, monkeypatch):
+    from xian_py.hybrid import AccountTransitionDraft
+    from xian_py.wallet import Wallet
+
+    legacy = Wallet()
+    draft = AccountTransitionDraft("local-test", legacy.public_key, 0)
+    path = tmp_path / "active.json"
+    path.write_text(draft.export_backup("active", "backup test password"))
+    monkeypatch.setenv("XIAN_ACTIVE_BACKUP_FILE", str(path))
+    monkeypatch.setenv("XIAN_BACKUP_PASSWORD", "backup test password")
+    monkeypatch.setenv("XIAN_CHAIN_ID", "local-test")
+    monkeypatch.delenv("XIAN_WALLET_PRIVATE_KEY", raising=False)
+    assert _load_bootstrap_module()._require_wallet().public_key == legacy.public_key
+    monkeypatch.setenv("XIAN_WALLET_PRIVATE_KEY", legacy.private_key)
+    with pytest.raises(ValueError, match="exactly one"):
+        _load_bootstrap_module()._require_wallet()

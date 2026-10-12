@@ -115,10 +115,15 @@ def _env_list(name: str, default: list[str]) -> list[str]:
 
 
 def _require_wallet() -> Wallet:
-    private_key = os.environ.get("XIAN_WALLET_PRIVATE_KEY")
-    if not private_key:
-        raise RuntimeError("XIAN_WALLET_PRIVATE_KEY is required to bootstrap the protocol.")
-    return Wallet(private_key=private_key)
+    from xian_py.signers import load_signing_wallet
+
+    backup = os.environ.get("XIAN_ACTIVE_BACKUP_FILE")
+    return load_signing_wallet(
+        private_key=os.environ.get("XIAN_WALLET_PRIVATE_KEY"),
+        active_backup_file=backup,
+        backup_password=os.environ.get("XIAN_BACKUP_PASSWORD") if backup else None,
+        chain_id=os.environ.get("XIAN_CHAIN_ID"),
+    )
 
 
 def _require_user_contract_name(label: str, value: str) -> None:

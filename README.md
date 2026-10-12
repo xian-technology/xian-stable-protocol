@@ -1,7 +1,6 @@
 # xian-stable-protocol
 
-`xian-stable-protocol` is a Xian-native redesign of the original
-`rubixdao` stablecoin prototype. It implements an overcollateralized
+`xian-stable-protocol` implements a Xian-native overcollateralized
 CDP-style stablecoin with a savings vault, a peg-stability module, an
 on-chain oracle, and an executable bootstrap path that wires the system
 into the Xian stack.
@@ -24,11 +23,12 @@ flowchart LR
   Governance --> PSM
 ```
 
-## Status
+## Deployment scope
 
-Strong reference implementation with a real Xian-stack bootstrap path.
-**Not** a fully automated production protocol. The main remaining
-hardening work is tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
+This reference protocol provides contracts and a bootstrap tool. Operators own
+collateral parameters, oracle operation, governance handoff, monitoring and
+incident handling. Review those deployment-specific controls before using it
+with material value.
 
 ## Quick Start
 
@@ -70,7 +70,7 @@ Full operator guidance is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Principles
 
-The protocol keeps the original high-level model:
+The protocol uses this model:
 
 - overcollateralized vaults mint a stable asset
 - vault debt accrues a stability fee
@@ -81,8 +81,7 @@ The protocol keeps the original high-level model:
 - a peg-stability module offers direct mint and redeem flows against
   reserve assets
 
-But the contracts are intentionally **not** a literal port. They were
-redesigned for current Xian / Contracting patterns:
+Its contract interfaces use Xian / Contracting patterns:
 
 - standard token approvals use a dedicated `approvals` hash
 - contracts emit structured `LogEvent`s for indexers and explorers
@@ -217,3 +216,12 @@ SDK revision the rest of the Xian stack is using.
 - [docs/ROADMAP.md](docs/ROADMAP.md) — production-hardening work
 - [`../xian-configs/README.md`](../xian-configs/README.md) — network manifests and templates
 - [`../xian-cli/README.md`](../xian-cli/README.md) — operator CLI
+
+## Hybrid bootstrap signer
+
+An already enrolled deployer can use `XIAN_ACTIVE_BACKUP_FILE` plus
+`XIAN_BACKUP_PASSWORD` instead of `XIAN_WALLET_PRIVATE_KEY`. Set `XIAN_CHAIN_ID`
+for explicit chain binding. The bootstrap retains the original authority
+addresses; it does not enroll or rotate custody. Install the SDK
+with its `hybrid` extra and retain the verified master backup offline. Derive an encrypted active-only
+credential from it for the bootstrap; do not install the master on the signer.
