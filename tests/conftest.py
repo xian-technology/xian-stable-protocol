@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 from contracting.local import ContractingClient
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).absolute().parents[1]
 CONTRACTS_DIR = ROOT / "contracts"
 
 

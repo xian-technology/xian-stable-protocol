@@ -191,7 +191,7 @@ The tests cover:
 - stable-token controller and allowance flows
 - weighted governance using Xian governance semantics
 - oracle reporter, quorum, medianization, and freshness behavior
-- savings share accounting
+- savings share accounting (deposits that round to zero shares are rejected before moving assets)
 - vault creation, closing, fee accrual, collateral withdrawals, and
   debt-share accounting
 - partial liquidation and owner-cured auctions

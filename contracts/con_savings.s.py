@@ -203,6 +203,7 @@ def deposit(assets: Any):
     assert assets > 0, "assets must be positive."
 
     shares = preview_deposit(assets=assets)
+    assert shares > 0, "Deposit would mint zero shares."
     stable_token().transfer_from(amount=assets, to=ctx.this, main_account=ctx.caller)
     balances[ctx.caller] += shares
     share_supply.set(current_share_supply() + shares)

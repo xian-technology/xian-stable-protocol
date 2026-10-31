@@ -3,11 +3,10 @@
   "schema_version": 1,
   "name": "xian-stable-protocol",
   "display_name": "Xian Stable Protocol",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pinned stable-protocol contract bundle for validation and operator bootstrap flows.",
   "source": {
     "repo": "https://github.com/xian-technology/xian-stable-protocol",
-    "commit": "d2a0ec60b7253ceda472d75ab20a90511e46c650",
     "snapshot_policy": "Owned by xian-stable-protocol for reproducible bootstrap validation."
   },
   "contracts": [
@@ -31,7 +30,7 @@
       "name": "con_savings",
       "role": "savings",
       "path": "contracts/con_savings.s.py",
-      "sha256": "6668427847952cf2daae1801a29f8f916ba067030d472cc4cbb72b12ed5d8d48",
+      "sha256": "185f715ca72eb883d484952b1c5b6124ae14b2a727d15cec88fd69ae7600c944",
       "deploy_order": 30,
       "default_chi": 240000
     },
