@@ -169,7 +169,15 @@ def protocol(tmp_path):
         collateral_token.approve(to="con_vaults", amount=1_000, signer=account)
         reserve_token.transfer(to=account, amount=1_000)
 
+    def seed_saver(amount=1, account="carol"):
+        """Give the savings vault a depositor so fee income is routed to it."""
+        stable_token.mint(amount=amount, to=account, signer="governor")
+        stable_token.approve(amount=amount, to="con_savings", signer=account)
+        savings.deposit(assets=amount, signer=account)
+        return amount
+
     return SimpleNamespace(
+        seed_saver=seed_saver,
         client=client,
         members=members,
         governance=governance,

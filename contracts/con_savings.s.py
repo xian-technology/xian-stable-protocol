@@ -1,3 +1,10 @@
+# Virtual shares and assets (ERC-4626 style offset). They price an empty vault
+# at one asset per share and absorb assets that arrive without a depositor, so a
+# donation cannot inflate the share price against the next depositor and the
+# first depositor cannot claim assets held before any deposit.
+VIRTUAL_SHARES = decimal("0.000000000001")
+VIRTUAL_ASSETS = decimal("0.000000000001")
+
 balances = Hash(default_value=0)
 approvals = Hash(default_value=0)
 metadata = Hash(default_value=None)
@@ -169,10 +176,9 @@ def allowance(owner: str, spender: str):
 
 @export
 def share_price():
-    supply = current_share_supply()
-    if supply <= 0:
-        return 1
-    return current_total_assets() / supply
+    return (current_total_assets() + VIRTUAL_ASSETS) / (
+        current_share_supply() + VIRTUAL_SHARES
+    )
 
 
 @export
@@ -180,11 +186,11 @@ def preview_deposit(assets: Any):
     assert isinstance(assets, (int, decimal)), "assets must be numeric."
     assert assets > 0, "assets must be positive."
 
-    supply = current_share_supply()
-    total_assets_before = current_total_assets()
-    if supply <= 0 or total_assets_before <= 0:
-        return assets
-    return assets * supply / total_assets_before
+    return (
+        assets
+        * (current_share_supply() + VIRTUAL_SHARES)
+        / (current_total_assets() + VIRTUAL_ASSETS)
+    )
 
 
 @export
@@ -194,7 +200,11 @@ def preview_redeem(shares: Any):
 
     supply = current_share_supply()
     assert supply > 0, "No shares exist."
-    return shares * current_total_assets() / supply
+    return (
+        shares
+        * (current_total_assets() + VIRTUAL_ASSETS)
+        / (supply + VIRTUAL_SHARES)
+    )
 
 
 @export

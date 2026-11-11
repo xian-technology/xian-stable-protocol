@@ -96,6 +96,20 @@ redesigned for current Xian / Contracting patterns:
 - a surplus buffer and recapitalization path keep protocol losses
   explicit
 
+Liquidation auctions have a reserve: the opening bid must repay the vault's
+debt, or, when the collateral is worth less, at least the oracle value of the
+collateral minus the liquidation bonus. An auction that ends without bids can
+be restarted by anyone with `restart_auction(vault_id)`; it keeps the debt
+snapshot and runs for another `auction_duration_seconds`.
+
+The savings vault prices shares with a small virtual share/asset offset
+(ERC-4626 style), so direct donations cannot inflate the share price against
+the next depositor and the first depositor cannot claim assets that arrived
+before any deposit. Vault fee income and swept surplus go to `con_savings`
+only while it has depositors; otherwise they go to the treasury (or the
+governor). `set_savings_contract` accepts only contracts that export
+`total_supply`.
+
 Recapitalization accepts only existing vault types. Inactive types can still
 receive recapitalization so disabling new borrowing does not prevent recovery.
 
@@ -113,7 +127,8 @@ con_vaults.set_treasury_address(address='treasury')
 con_psm.set_treasury_address(address='treasury')
 ```
 
-If `con_vaults` has no `savings_contract` and no `treasury_address`, or
+If `con_vaults` has no `savings_contract` (or the savings vault has no
+depositors) and no `treasury_address`, or
 `con_psm` has no `treasury_address`, fees fall back to the current
 governor. That is valid contract behavior but not the intended
 production setup.
@@ -194,13 +209,16 @@ The tests cover:
 - stable-token controller and allowance flows
 - weighted governance using Xian governance semantics
 - oracle reporter, quorum, medianization, and freshness behavior
-- savings share accounting (deposits that round to zero shares are rejected before moving assets)
+- savings share accounting (deposits that round to zero shares are rejected
+  before moving assets; donations cannot inflate shares against later
+  depositors)
 - vault creation, closing, fee accrual, collateral withdrawals, and
   debt-share accounting (stability-fee changes accrue the old rate first,
   so a new fee applies only from the change time)
 - partial liquidation and owner-cured auctions
-- liquidation auctions with bid extension, bidder refunds, bad-debt
-  accounting, and recapitalization
+- liquidation auctions with reserve bids, restart after an auction ends
+  without bids, bid extension, bidder refunds, bad-debt accounting, and
+  recapitalization
 - PSM mint and redeem flows
 
 ## Dependency Note

@@ -90,6 +90,16 @@ AuctionOpenedEvent = LogEvent(
     },
 )
 
+AuctionRestartedEvent = LogEvent(
+    "AuctionRestarted",
+    {
+        "vault_id": {"type": int, "idx": True},
+        "owner": {"type": str, "idx": True},
+        "debt": (int, decimal),
+        "end_time": str,
+    },
+)
+
 AuctionBidPlacedEvent = LogEvent(
     "AuctionBidPlaced",
     {
@@ -190,6 +200,8 @@ def seed(
     if resolved_governor is None or resolved_governor == "":
         resolved_governor = ctx.caller
 
+    require_savings_contract(savings_contract_name)
+
     stable_token_contract.set(stable_token_contract_name)
     oracle_contract.set(oracle_contract_name)
     savings_contract.set(savings_contract_name)
@@ -204,6 +216,13 @@ def seed(
 
 def stable_token():
     return importlib.import_module(stable_token_contract.get())
+
+
+def require_savings_contract(name: str):
+    if name != "":
+        assert importlib.has_export(name, "total_supply"), (
+            "savings contract must export total_supply."
+        )
 
 
 def oracle():
@@ -481,12 +500,7 @@ def route_fee_income(vault_type_id: int, amount: Any):
     if distributed_amount <= 0:
         return
 
-    destination = savings_contract.get()
-    if destination is None or destination == "":
-        destination = treasury_address.get()
-    if destination is None or destination == "":
-        destination = governor.get()
-
+    destination = fee_destination()
     if destination != ctx.this:
         stable_token().transfer(amount=distributed_amount, to=destination)
 
@@ -494,6 +508,19 @@ def route_fee_income(vault_type_id: int, amount: Any):
         vault_type_value(vault_type_id, "fees_distributed", 0)
         + distributed_amount
     )
+
+
+def fee_destination():
+    # Savings earns protocol income only while it has depositors; earlier
+    # income would otherwise sit in the empty vault for the first depositor.
+    destination = savings_contract.get()
+    if destination is not None and destination != "":
+        if importlib.import_module(destination).total_supply() > 0:
+            return destination
+    destination = treasury_address.get()
+    if destination is None or destination == "":
+        destination = governor.get()
+    return destination
 
 
 def burn_principal(amount: Any):
@@ -733,10 +760,26 @@ def liquidation_quote_internal(vault_id: int):
     }
 
 
+def reserve_bid(vault_id: int):
+    # The opening bid must repay the debt, or, when the collateral is worth less,
+    # buy the collateral at no more than the liquidation-bonus discount. This
+    # keeps a lone bidder from winning collateral for a token amount.
+    if vaults[vault_id, "auction_open"] is not True:
+        return 0
+    bonus_bps = vault_type_value(vault_type_id_of(vault_id), "liquidation_bonus_bps", 0)
+    discounted_value = (
+        collateral_value(vault_id) * (BPS_DENOMINATOR - bonus_bps) / BPS_DENOMINATOR
+    )
+    reserve = min(vault_snapshot_debt(vault_id), discounted_value)
+    if reserve < 0:
+        return 0
+    return reserve
+
+
 def min_next_bid(vault_id: int):
     highest_bid = vaults[vault_id, "auction_highest_bid"]
     if highest_bid is None or highest_bid <= 0:
-        return 0
+        return reserve_bid(vault_id)
     increment_bps = vault_type_value(
         vault_type_id_of(vault_id), "min_bid_increment_bps", 0
     )
@@ -792,6 +835,7 @@ def set_paused(value: bool):
 def set_savings_contract(target_contract: str):
     require_governor()
     assert isinstance(target_contract, str), "target_contract must be a string."
+    require_savings_contract(target_contract)
     savings_contract.set(target_contract)
 
 
@@ -1299,6 +1343,30 @@ def open_liquidation_auction(vault_id: int):
 
 
 @export
+def restart_auction(vault_id: int):
+    assert_not_paused()
+    require_open_vault(vault_id)
+    assert vaults[vault_id, "auction_open"] is True, "Auction is not open."
+    assert current_time() >= vaults[vault_id, "auction_end_time"], "Auction is still open."
+    assert vaults[vault_id, "auction_highest_bid"] <= 0, "Auction already has bids."
+
+    duration = vault_type_value(vault_type_id_of(vault_id), "auction_duration_seconds")
+    end_time = current_time() + datetime.timedelta(seconds=duration)
+    vaults[vault_id, "auction_opened_at"] = current_time()
+    vaults[vault_id, "auction_end_time"] = end_time
+
+    AuctionRestartedEvent(
+        {
+            "vault_id": vault_id,
+            "owner": vault_owner_of(vault_id),
+            "debt": vault_snapshot_debt(vault_id),
+            "end_time": str(end_time),
+        }
+    )
+    return end_time
+
+
+@export
 def bid(vault_id: int, bid_amount: Any):
     require_open_vault(vault_id)
     assert vaults[vault_id, "auction_open"] is True, "Auction is not open."
@@ -1592,12 +1660,7 @@ def sweep_surplus(vault_type_id: int, amount: Any = None):
     assert amount > 0, "amount must be positive."
     assert amount <= available, "amount exceeds surplus buffer."
 
-    destination = savings_contract.get()
-    if destination is None or destination == "":
-        destination = treasury_address.get()
-    if destination is None or destination == "":
-        destination = governor.get()
-
+    destination = fee_destination()
     vault_types[vault_type_id, "surplus_buffer"] = available - amount
     if destination != ctx.this:
         stable_token().transfer(amount=amount, to=destination)

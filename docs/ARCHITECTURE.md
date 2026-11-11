@@ -48,7 +48,10 @@ into both a savings pool and an explicit surplus buffer.
 - partial liquidation when a vault can be restored safely
 - auction liquidation when partial cure cannot restore the vault
 - auction cure and auction cancellation when the vault becomes safe again
-- fee routing to `con_savings`, `treasury`, or `governor`
+- auction reserve bids (debt, or discounted collateral value when underwater)
+  and restart of auctions that ended without bids
+- fee routing to `con_savings` while it has depositors, otherwise `treasury`
+  or `governor`
 - live-chain deployments typically use a collateral asset such as
   `con_collateral_token`
 - explicit surplus buffer, bad debt accounting, and recapitalization hooks
@@ -56,7 +59,8 @@ into both a savings pool and an explicit surplus buffer.
 ### `con_savings`
 
 - share-based vault for the protocol stable asset
-- deposits mint shares against current asset/share ratio
+- deposits mint shares against current asset/share ratio, including a small
+  virtual share/asset offset that defeats donation inflation
 - routed protocol fees increase assets per share
 - no rebasing; users hold transferable shares
 

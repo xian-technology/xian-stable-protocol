@@ -171,6 +171,7 @@ def test_fee_accrual_routes_and_accounts_for_every_minted_token(
     principal = 100
     start = {"now": Datetime(year=2026, month=1, day=1)}
     end = {"now": end_time}
+    saved = protocol.seed_saver()
     vault_id = protocol.vaults.create_vault(
         vault_type_id=protocol.vault_type_id,
         collateral_amount=100,
@@ -194,7 +195,7 @@ def test_fee_accrual_routes_and_accounts_for_every_minted_token(
     )
 
     vault_type = protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)
-    assert float(protocol.savings.total_assets()) == pytest.approx(expected_fee * 0.8)
+    assert float(protocol.savings.total_assets() - saved) == pytest.approx(expected_fee * 0.8)
     assert float(vault_type["surplus_buffer"]) == pytest.approx(expected_fee * 0.2)
     assert float(vault_type["live_principal_outstanding"]) == pytest.approx(0)
     assert float(vault_type["live_debt_outstanding"]) == pytest.approx(0)
@@ -207,7 +208,8 @@ def test_auction_settlement_fuzz_preserves_debt_and_supply_accounting(
     seed,
 ):
     rng = Random(seed)
-    winning_bid = rng.randint(1, 150)
+    # Opening bids must cover the reserve: 100 COL at 0.5 less the 5% bonus.
+    winning_bid = rng.randint(48, 150)
     start = {"now": Datetime(year=2026, month=1, day=1)}
     end = {"now": Datetime(year=2026, month=1, day=2, second=1)}
 
