@@ -4,6 +4,43 @@ import pytest
 from xian_runtime_types.time import Datetime
 
 
+@pytest.mark.parametrize("vault_type_id", [-1, 999])
+def test_recapitalization_rejects_nonexistent_vault_type_without_spending(protocol, vault_type_id):
+    protocol.stable_token.mint(amount=10, to="alice", signer="governor")
+    protocol.stable_token.approve(amount=10, to="con_vaults", signer="alice")
+    supply = protocol.stable_token.total_supply_of()
+
+    with pytest.raises(AssertionError, match="Vault type does not exist"):
+        protocol.vaults.recapitalize(vault_type_id=vault_type_id, amount=10, signer="alice")
+
+    assert protocol.stable_token.balance_of(address="alice") == 10
+    assert protocol.stable_token.balance_of(address="con_vaults") == 0
+    assert protocol.stable_token.allowance(owner="alice", spender="con_vaults") == 10
+    assert protocol.stable_token.total_supply_of() == supply
+    assert (
+        protocol.client.raw_driver.get(f"con_vaults.vault_types:{vault_type_id}:surplus_buffer")
+        is None
+    )
+
+
+def test_inactive_existing_vault_type_can_still_be_recapitalized(protocol):
+    protocol.stable_token.mint(amount=10, to="alice", signer="governor")
+    protocol.stable_token.approve(amount=10, to="con_vaults", signer="alice")
+    protocol.vaults.set_vault_type_active(
+        vault_type_id=protocol.vault_type_id, active=False, signer="governor"
+    )
+
+    result = protocol.vaults.recapitalize(
+        vault_type_id=protocol.vault_type_id, amount=10, signer="alice"
+    )
+
+    assert result == {"bad_debt_reduced": 0, "surplus_added": 10}
+    assert protocol.stable_token.balance_of(address="alice") == 0
+    state = protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)
+    assert state["active"] is False
+    assert state["surplus_buffer"] == 10
+
+
 def test_create_and_close_vault_routes_fees_to_savings_and_surplus(protocol):
     start = {"now": Datetime(year=2026, month=1, day=1)}
     end = {"now": Datetime(year=2027, month=1, day=1)}

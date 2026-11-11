@@ -96,6 +96,9 @@ redesigned for current Xian / Contracting patterns:
 - a surplus buffer and recapitalization path keep protocol losses
   explicit
 
+Recapitalization accepts only existing vault types. Inactive types can still
+receive recapitalization so disabling new borrowing does not prevent recovery.
+
 ## Required Wiring
 
 The protocol is not correctly wired unless fee destinations are

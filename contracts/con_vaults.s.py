@@ -260,8 +260,12 @@ def vault_type_value(vault_type_id: int, field: str, fallback: Any = None):
     return value
 
 
-def require_vault_type(vault_type_id: int):
+def require_vault_type_exists(vault_type_id: int):
     assert vault_type_value(vault_type_id, "collateral_contract") is not None, "Vault type does not exist."
+
+
+def require_vault_type(vault_type_id: int):
+    require_vault_type_exists(vault_type_id)
     assert vault_type_value(vault_type_id, "active", False) is True, "Vault type is inactive."
 
 
@@ -881,7 +885,7 @@ def add_vault_type(
 @export
 def set_vault_type_active(vault_type_id: int, active: bool):
     require_governor()
-    assert vault_type_value(vault_type_id, "collateral_contract") is not None, "Vault type does not exist."
+    require_vault_type_exists(vault_type_id)
     vault_types[vault_type_id, "active"] = active
 
 
@@ -1535,6 +1539,7 @@ def cover_bad_debt(vault_type_id: int, amount: Any = None):
 
 @export
 def recapitalize(vault_type_id: int, amount: Any):
+    require_vault_type_exists(vault_type_id)
     assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "amount must be positive."
 
@@ -1643,7 +1648,7 @@ def get_auction(vault_id: int):
 
 @export
 def get_vault_type(vault_type_id: int):
-    assert vault_type_value(vault_type_id, "collateral_contract") is not None, "Vault type does not exist."
+    require_vault_type_exists(vault_type_id)
     rate = current_rate(vault_type_id)
     return {
         "active": vault_type_value(vault_type_id, "active"),
