@@ -173,7 +173,7 @@ The bootstrap validates `contract-bundle.json` before connecting to the node,
 loads the verified sources once, and follows the bundle's deployment order and
 chi defaults. Use `--bundle` to select another validated bundle. Product-specific
 constructor settings remain in the bootstrap script. The `deploy` group includes
-`xian-tech-cli` for shared validation and `xian-tech-py>=0.5.0,<0.6` for source
+`xian-tech-cli` for shared validation and `xian-tech-py>=0.5.3,<0.6` for source
 submission.
 
 Set `XIAN_STABLE_DEPLOY_CHI` only to override all bundle deployment budgets.
@@ -201,10 +201,8 @@ The tests cover:
 
 ## Dependency Note
 
-This repository tracks the current `xian-contracting` `main` branch via
-`tool.uv.sources` and locks the resolved revision in `uv.lock`. That is
-intentional: the protocol targets the latest Xian Contracting event and
-runtime behavior, which may move ahead of the last PyPI release.
+The protocol tests use the sibling `xian-contracting` checkout configured in
+`tool.uv.sources`. The standard local client runs the contracts on the V2 VM.
 
 The optional `deploy` dependency group resolves `xian-py` from the
 sibling workspace checkout so the bootstrap script exercises the same
