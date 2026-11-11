@@ -281,3 +281,35 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
     assert vault_type["bad_debt"] == 0
     assert vault_type["surplus_buffer"] == 0
     assert protocol.savings.total_assets() == pytest.approx(14)
+
+
+def test_stability_fee_change_applies_only_from_the_change_time(protocol):
+    start = {"now": Datetime(year=2026, month=1, day=1)}
+    change = {"now": Datetime(year=2027, month=1, day=1)}
+
+    vault_id = protocol.vaults.create_vault(
+        vault_type_id=protocol.vault_type_id,
+        collateral_amount=300,
+        debt_amount=100,
+        signer="alice",
+        environment=start,
+    )
+
+    protocol.vaults.set_vault_type_fee(
+        vault_type_id=protocol.vault_type_id,
+        stability_fee_bps=5000,
+        signer="governor",
+        environment=change,
+    )
+
+    vault = protocol.vaults.get_vault(vault_id=vault_id, environment=change)
+    assert vault["debt"] == pytest.approx(105)
+
+
+def test_stability_fee_change_rejects_nonexistent_vault_type(protocol):
+    with pytest.raises(AssertionError, match="Vault type does not exist"):
+        protocol.vaults.set_vault_type_fee(
+            vault_type_id=999, stability_fee_bps=100, signer="governor"
+        )
+
+    assert protocol.client.raw_driver.get("con_vaults.vault_types:999:stability_fee_bps") is None

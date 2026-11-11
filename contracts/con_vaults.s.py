@@ -892,7 +892,9 @@ def set_vault_type_active(vault_type_id: int, active: bool):
 @export
 def set_vault_type_fee(vault_type_id: int, stability_fee_bps: int):
     require_governor()
+    require_vault_type_exists(vault_type_id)
     assert stability_fee_bps >= 0, "stability_fee_bps must be non-negative."
+    accrue_vault_type(vault_type_id)
     vault_types[vault_type_id, "stability_fee_bps"] = stability_fee_bps
 
 

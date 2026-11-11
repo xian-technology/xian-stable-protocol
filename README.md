@@ -196,7 +196,8 @@ The tests cover:
 - oracle reporter, quorum, medianization, and freshness behavior
 - savings share accounting (deposits that round to zero shares are rejected before moving assets)
 - vault creation, closing, fee accrual, collateral withdrawals, and
-  debt-share accounting
+  debt-share accounting (stability-fee changes accrue the old rate first,
+  so a new fee applies only from the change time)
 - partial liquidation and owner-cured auctions
 - liquidation auctions with bid extension, bidder refunds, bad-debt
   accounting, and recapitalization
