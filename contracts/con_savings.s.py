@@ -11,8 +11,8 @@ DepositEvent = LogEvent(
     "Deposit",
     {
         "account": {"type": str, "idx": True},
-        "assets": (int, float, decimal),
-        "shares": (int, float, decimal),
+        "assets": (int, decimal),
+        "shares": (int, decimal),
     },
 )
 
@@ -20,8 +20,8 @@ WithdrawEvent = LogEvent(
     "Withdraw",
     {
         "account": {"type": str, "idx": True},
-        "assets": (int, float, decimal),
-        "shares": (int, float, decimal),
+        "assets": (int, decimal),
+        "shares": (int, decimal),
     },
 )
 
@@ -30,7 +30,7 @@ TransferEvent = LogEvent(
     {
         "from": {"type": str, "idx": True},
         "to": {"type": str, "idx": True},
-        "amount": (int, float, decimal),
+        "amount": (int, decimal),
     },
 )
 
@@ -39,7 +39,7 @@ ApproveEvent = LogEvent(
     {
         "owner": {"type": str, "idx": True},
         "spender": {"type": str, "idx": True},
-        "amount": (int, float, decimal),
+        "amount": (int, decimal),
     },
 )
 
@@ -177,7 +177,7 @@ def share_price():
 
 @export
 def preview_deposit(assets: Any):
-    assert isinstance(assets, (int, float, decimal)), "assets must be numeric."
+    assert isinstance(assets, (int, decimal)), "assets must be numeric."
     assert assets > 0, "assets must be positive."
 
     supply = current_share_supply()
@@ -189,7 +189,7 @@ def preview_deposit(assets: Any):
 
 @export
 def preview_redeem(shares: Any):
-    assert isinstance(shares, (int, float, decimal)), "shares must be numeric."
+    assert isinstance(shares, (int, decimal)), "shares must be numeric."
     assert shares > 0, "shares must be positive."
 
     supply = current_share_supply()
@@ -199,7 +199,7 @@ def preview_redeem(shares: Any):
 
 @export
 def deposit(assets: Any):
-    assert isinstance(assets, (int, float, decimal)), "assets must be numeric."
+    assert isinstance(assets, (int, decimal)), "assets must be numeric."
     assert assets > 0, "assets must be positive."
 
     shares = preview_deposit(assets=assets)
@@ -216,7 +216,7 @@ def deposit(assets: Any):
 
 @export
 def withdraw(shares: Any):
-    assert isinstance(shares, (int, float, decimal)), "shares must be numeric."
+    assert isinstance(shares, (int, decimal)), "shares must be numeric."
     assert shares > 0, "shares must be positive."
     assert balances[ctx.caller] >= shares, "Not enough shares."
 
@@ -233,7 +233,7 @@ def withdraw(shares: Any):
 
 @export
 def transfer(amount: Any, to: str):
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "Cannot transfer non-positive balances."
     assert isinstance(to, str) and to != "", "to must be non-empty."
     assert balances[ctx.caller] >= amount, "Not enough balance."
@@ -245,7 +245,7 @@ def transfer(amount: Any, to: str):
 
 @export
 def approve(amount: Any, to: str):
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount >= 0, "Cannot approve negative balances."
     assert isinstance(to, str) and to != "", "to must be non-empty."
 
@@ -256,7 +256,7 @@ def approve(amount: Any, to: str):
 
 @export
 def transfer_from(amount: Any, to: str, main_account: str):
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "Cannot transfer non-positive balances."
     assert isinstance(to, str) and to != "", "to must be non-empty."
     assert isinstance(main_account, str) and main_account != "", "main_account must be non-empty."

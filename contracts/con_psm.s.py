@@ -14,9 +14,9 @@ MintedEvent = LogEvent(
     "Minted",
     {
         "account": {"type": str, "idx": True},
-        "reserve_in": (int, float, decimal),
-        "stable_out": (int, float, decimal),
-        "fee": (int, float, decimal),
+        "reserve_in": (int, decimal),
+        "stable_out": (int, decimal),
+        "fee": (int, decimal),
     },
 )
 
@@ -24,9 +24,9 @@ RedeemedEvent = LogEvent(
     "Redeemed",
     {
         "account": {"type": str, "idx": True},
-        "stable_in": (int, float, decimal),
-        "reserve_out": (int, float, decimal),
-        "fee": (int, float, decimal),
+        "stable_in": (int, decimal),
+        "reserve_out": (int, decimal),
+        "fee": (int, decimal),
     },
 )
 
@@ -195,7 +195,7 @@ def set_fees(mint_fee_bps_value: int, redeem_fee_bps_value: int):
 
 @export
 def quote_mint(reserve_amount: Any):
-    assert isinstance(reserve_amount, (int, float, decimal)), "reserve_amount must be numeric."
+    assert isinstance(reserve_amount, (int, decimal)), "reserve_amount must be numeric."
     assert reserve_amount > 0, "reserve_amount must be positive."
     fee = reserve_amount * mint_fee_bps.get() / BPS_DENOMINATOR
     stable_out = reserve_amount - fee
@@ -209,7 +209,7 @@ def quote_mint(reserve_amount: Any):
 
 @export
 def quote_redeem(stable_amount: Any):
-    assert isinstance(stable_amount, (int, float, decimal)), "stable_amount must be numeric."
+    assert isinstance(stable_amount, (int, decimal)), "stable_amount must be numeric."
     assert stable_amount > 0, "stable_amount must be positive."
     fee = stable_amount * redeem_fee_bps.get() / BPS_DENOMINATOR
     reserve_out = stable_amount - fee

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from xian_runtime_types.time import Datetime
 
@@ -51,7 +53,7 @@ def test_fast_liquidation_performs_partial_cure(protocol):
         debt_amount=100,
         signer="alice",
     )
-    protocol.oracle.submit_price(asset="COL", price=1.2, signer="governor")
+    protocol.oracle.submit_price(asset="COL", price=Decimal("1.2"), signer="governor")
     protocol.stable_token.mint(amount=100, to="bob", signer="governor")
     protocol.stable_token.approve(amount=100, to="con_vaults", signer="bob")
 
@@ -77,7 +79,7 @@ def test_auction_can_be_cured_by_owner_before_bids(protocol):
         debt_amount=100,
         signer="alice",
     )
-    protocol.oracle.submit_price(asset="COL", price=0.5, signer="governor")
+    protocol.oracle.submit_price(asset="COL", price=Decimal("0.5"), signer="governor")
     protocol.stable_token.approve(amount=100, to="con_vaults", signer="alice")
 
     protocol.vaults.open_liquidation_auction(vault_id=vault_id, signer="bob")
@@ -105,7 +107,7 @@ def test_auction_can_be_cancelled_after_price_recovery_without_bids(protocol):
         signer="alice",
         environment=start,
     )
-    protocol.oracle.submit_price(asset="COL", price=0.5, signer="governor")
+    protocol.oracle.submit_price(asset="COL", price=Decimal("0.5"), signer="governor")
     protocol.vaults.open_liquidation_auction(
         vault_id=vault_id,
         signer="bob",
@@ -131,7 +133,7 @@ def test_auction_extends_records_bad_debt_and_allows_loser_refund(protocol):
         signer="alice",
         environment=start,
     )
-    protocol.oracle.submit_price(asset="COL", price=0.5, signer="governor")
+    protocol.oracle.submit_price(asset="COL", price=Decimal("0.5"), signer="governor")
     protocol.stable_token.mint(amount=100, to="bob", signer="governor")
     protocol.stable_token.mint(amount=100, to="carol", signer="governor")
     protocol.stable_token.approve(amount=100, to="con_vaults", signer="bob")
@@ -203,7 +205,7 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
         signer="bob",
         environment=auction_start,
     )
-    protocol.oracle.submit_price(asset="COL", price=0.5, signer="governor")
+    protocol.oracle.submit_price(asset="COL", price=Decimal("0.5"), signer="governor")
     protocol.stable_token.mint(amount=100, to="carol", signer="governor")
     protocol.stable_token.approve(amount=100, to="con_vaults", signer="carol")
 

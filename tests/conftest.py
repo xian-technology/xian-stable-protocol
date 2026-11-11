@@ -24,7 +24,7 @@ def protocol(tmp_path):
     storage_home = tmp_path / "xian"
     storage_home.mkdir(parents=True, exist_ok=True)
 
-    client = ContractingClient(storage_home=storage_home)
+    client = ContractingClient(vm_profile="xian_vm_v2", storage_home=storage_home)
     client.flush()
 
     members = submit_contract(

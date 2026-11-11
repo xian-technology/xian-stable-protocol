@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from xian_runtime_types.time import Datetime
 
@@ -48,7 +50,7 @@ def test_oracle_freshness_limit_is_enforced(protocol):
     )
     protocol.oracle.submit_price(
         asset="COL",
-        price=2.2,
+        price=Decimal("2.2"),
         signer="oracle_2",
         environment=start,
     )

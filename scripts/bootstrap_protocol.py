@@ -680,7 +680,9 @@ def main(argv: list[str] | None = None) -> int:
 
     plan = _build_deployment_plan(args.bundle, config, skip_sample_tokens=args.skip_sample_tokens)
 
-    client_config = XianClientConfig(retry=RetryPolicy(max_attempts=3, initial_delay_seconds=0.25))
+    client_config = XianClientConfig(
+        retry=RetryPolicy(max_attempts=3, initial_delay_seconds=0.25), vm_profile="xian_vm_v2"
+    )
 
     with Xian(
         config.node_url,

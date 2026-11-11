@@ -1,3 +1,4 @@
+from decimal import Decimal
 from random import Random
 
 import pytest
@@ -179,11 +180,10 @@ def test_fee_accrual_routes_and_accounts_for_every_minted_token(
     )
     expected_fee = principal * 500 / 10_000 * elapsed_seconds / (365 * 86_400)
 
-    # Fund a small buffer because contract decimals intentionally do not share
-    # Python's binary-float rounding at every intermediate step.
-    protocol.stable_token.mint(amount=expected_fee + 1, to="alice", signer="governor")
+    # Six tokens cover the largest fee in these scenarios (five tokens).
+    protocol.stable_token.mint(amount=6, to="alice", signer="governor")
     protocol.stable_token.approve(
-        amount=principal + expected_fee + 1,
+        amount=principal + 6,
         to="con_vaults",
         signer="alice",
     )
@@ -218,7 +218,7 @@ def test_auction_settlement_fuzz_preserves_debt_and_supply_accounting(
         signer="alice",
         environment=start,
     )
-    protocol.oracle.submit_price(asset="COL", price=0.5, signer="governor")
+    protocol.oracle.submit_price(asset="COL", price=Decimal("0.5"), signer="governor")
     protocol.stable_token.mint(amount=winning_bid, to="bob", signer="governor")
     protocol.stable_token.approve(
         amount=winning_bid,

@@ -16,7 +16,7 @@ PriceReportedEvent = LogEvent(
     {
         "asset": {"type": str, "idx": True},
         "reporter": {"type": str, "idx": True},
-        "price": (int, float, decimal),
+        "price": (int, decimal),
         "source": str,
     },
 )
@@ -252,7 +252,7 @@ def set_asset_config(
 def submit_price(asset: str, price: Any, source: str = ""):
     require_reporter()
     assert isinstance(asset, str) and asset != "", "asset must be non-empty."
-    assert isinstance(price, (int, float, decimal)), "price must be numeric."
+    assert isinstance(price, (int, decimal)), "price must be numeric."
     assert price > 0, "price must be positive."
     if source is None:
         source = ""

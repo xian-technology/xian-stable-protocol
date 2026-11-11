@@ -33,8 +33,8 @@ VaultOpenedEvent = LogEvent(
         "vault_id": {"type": int, "idx": True},
         "owner": {"type": str, "idx": True},
         "vault_type_id": {"type": int, "idx": True},
-        "collateral_amount": (int, float, decimal),
-        "principal": (int, float, decimal),
+        "collateral_amount": (int, decimal),
+        "principal": (int, decimal),
     },
 )
 
@@ -43,9 +43,9 @@ CollateralChangedEvent = LogEvent(
     {
         "vault_id": {"type": int, "idx": True},
         "owner": {"type": str, "idx": True},
-        "delta": (int, float, decimal),
+        "delta": (int, decimal),
         "direction": {"type": str, "idx": True},
-        "collateral_amount": (int, float, decimal),
+        "collateral_amount": (int, decimal),
     },
 )
 
@@ -55,8 +55,8 @@ DebtChangedEvent = LogEvent(
         "vault_id": {"type": int, "idx": True},
         "payer": {"type": str, "idx": True},
         "direction": {"type": str, "idx": True},
-        "principal_delta": (int, float, decimal),
-        "fee_delta": (int, float, decimal),
+        "principal_delta": (int, decimal),
+        "fee_delta": (int, decimal),
     },
 )
 
@@ -74,8 +74,8 @@ LiquidationEvent = LogEvent(
     {
         "vault_id": {"type": int, "idx": True},
         "liquidator": {"type": str, "idx": True},
-        "debt_repaid": (int, float, decimal),
-        "collateral_paid": (int, float, decimal),
+        "debt_repaid": (int, decimal),
+        "collateral_paid": (int, decimal),
         "partial": bool,
     },
 )
@@ -85,7 +85,7 @@ AuctionOpenedEvent = LogEvent(
     {
         "vault_id": {"type": int, "idx": True},
         "owner": {"type": str, "idx": True},
-        "debt": (int, float, decimal),
+        "debt": (int, decimal),
         "end_time": str,
     },
 )
@@ -95,7 +95,7 @@ AuctionBidPlacedEvent = LogEvent(
     {
         "vault_id": {"type": int, "idx": True},
         "bidder": {"type": str, "idx": True},
-        "bid_amount": (int, float, decimal),
+        "bid_amount": (int, decimal),
         "end_time": str,
     },
 )
@@ -114,8 +114,8 @@ AuctionSettledEvent = LogEvent(
     {
         "vault_id": {"type": int, "idx": True},
         "winner": {"type": str, "idx": True},
-        "winning_bid": (int, float, decimal),
-        "bad_debt": (int, float, decimal),
+        "winning_bid": (int, decimal),
+        "bad_debt": (int, decimal),
     },
 )
 
@@ -124,7 +124,7 @@ AuctionRefundClaimedEvent = LogEvent(
     {
         "vault_id": {"type": int, "idx": True},
         "claimer": {"type": str, "idx": True},
-        "amount": (int, float, decimal),
+        "amount": (int, decimal),
     },
 )
 
@@ -132,7 +132,7 @@ BadDebtCoveredEvent = LogEvent(
     "BadDebtCovered",
     {
         "vault_type_id": {"type": int, "idx": True},
-        "amount": (int, float, decimal),
+        "amount": (int, decimal),
     },
 )
 
@@ -141,9 +141,9 @@ RecapitalizedEvent = LogEvent(
     {
         "vault_type_id": {"type": int, "idx": True},
         "payer": {"type": str, "idx": True},
-        "amount": (int, float, decimal),
-        "bad_debt_reduced": (int, float, decimal),
-        "surplus_added": (int, float, decimal),
+        "amount": (int, decimal),
+        "bad_debt_reduced": (int, decimal),
+        "surplus_added": (int, decimal),
     },
 )
 
@@ -152,7 +152,7 @@ SurplusSweptEvent = LogEvent(
     {
         "vault_type_id": {"type": int, "idx": True},
         "destination": {"type": str, "idx": True},
-        "amount": (int, float, decimal),
+        "amount": (int, decimal),
     },
 )
 
@@ -822,9 +822,9 @@ def add_vault_type(
     assert liquidation_ratio_bps > 0, "liquidation_ratio_bps must be positive."
     assert liquidation_ratio_bps <= min_collateral_ratio_bps, "liquidation ratio must be <= minimum ratio."
     assert liquidation_bonus_bps >= 0, "liquidation_bonus_bps must be non-negative."
-    assert isinstance(debt_ceiling, (int, float, decimal)), "debt_ceiling must be numeric."
+    assert isinstance(debt_ceiling, (int, decimal)), "debt_ceiling must be numeric."
     assert debt_ceiling > 0, "debt_ceiling must be positive."
-    assert isinstance(min_debt, (int, float, decimal)), "min_debt must be numeric."
+    assert isinstance(min_debt, (int, decimal)), "min_debt must be numeric."
     assert min_debt >= 0, "min_debt must be non-negative."
     assert stability_fee_bps >= 0, "stability_fee_bps must be non-negative."
     assert auction_duration_seconds > 0, "auction_duration_seconds must be positive."
@@ -895,9 +895,9 @@ def set_vault_type_fee(vault_type_id: int, stability_fee_bps: int):
 @export
 def set_vault_type_limits(vault_type_id: int, debt_ceiling: Any, min_debt: Any):
     require_governor()
-    assert isinstance(debt_ceiling, (int, float, decimal)), "debt_ceiling must be numeric."
+    assert isinstance(debt_ceiling, (int, decimal)), "debt_ceiling must be numeric."
     assert debt_ceiling > 0, "debt_ceiling must be positive."
-    assert isinstance(min_debt, (int, float, decimal)), "min_debt must be numeric."
+    assert isinstance(min_debt, (int, decimal)), "min_debt must be numeric."
     assert min_debt >= 0, "min_debt must be non-negative."
     vault_types[vault_type_id, "debt_ceiling"] = debt_ceiling
     vault_types[vault_type_id, "min_debt"] = min_debt
@@ -958,8 +958,8 @@ def set_vault_type_surplus_buffer_bps(vault_type_id: int, surplus_buffer_bps: in
 def create_vault(vault_type_id: int, collateral_amount: Any, debt_amount: Any):
     assert_not_paused()
     require_vault_type(vault_type_id)
-    assert isinstance(collateral_amount, (int, float, decimal)), "collateral_amount must be numeric."
-    assert isinstance(debt_amount, (int, float, decimal)), "debt_amount must be numeric."
+    assert isinstance(collateral_amount, (int, decimal)), "collateral_amount must be numeric."
+    assert isinstance(debt_amount, (int, decimal)), "debt_amount must be numeric."
     assert collateral_amount > 0, "collateral_amount must be positive."
     assert debt_amount > 0, "debt_amount must be positive."
     assert debt_amount >= vault_type_value(vault_type_id, "min_debt", 0), "debt_amount is below min_debt."
@@ -1013,7 +1013,7 @@ def create_vault(vault_type_id: int, collateral_amount: Any, debt_amount: Any):
 def deposit_collateral(vault_id: int, amount: Any):
     require_vault_owner(vault_id)
     require_not_in_auction(vault_id)
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "amount must be positive."
 
     collateral_contract(vault_type_id_of(vault_id)).transfer_from(
@@ -1040,7 +1040,7 @@ def withdraw_collateral(vault_id: int, amount: Any):
     assert_not_paused()
     require_vault_owner(vault_id)
     require_not_in_auction(vault_id)
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "amount must be positive."
     assert vault_collateral(vault_id) >= amount, "Not enough collateral."
 
@@ -1071,7 +1071,7 @@ def borrow(vault_id: int, amount: Any):
     assert_not_paused()
     require_vault_owner(vault_id)
     require_not_in_auction(vault_id)
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "amount must be positive."
 
     vault_type_id = vault_type_id_of(vault_id)
@@ -1111,7 +1111,7 @@ def borrow(vault_id: int, amount: Any):
 def repay(vault_id: int, amount: Any):
     require_open_vault(vault_id)
     require_not_in_auction(vault_id)
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "amount must be positive."
 
     rate = accrue_vault_type(vault_type_id_of(vault_id))
@@ -1193,7 +1193,7 @@ def liquidate(vault_id: int, repay_amount: Any = None):
     if repay_amount is None or repay_amount == 0:
         repay_amount = quote["required_repayment"]
 
-    assert isinstance(repay_amount, (int, float, decimal)), "repay_amount must be numeric."
+    assert isinstance(repay_amount, (int, decimal)), "repay_amount must be numeric."
     assert repay_amount >= quote["required_repayment"], "repay_amount is too low."
     assert repay_amount <= debt, "repay_amount exceeds debt."
 
@@ -1297,7 +1297,7 @@ def bid(vault_id: int, bid_amount: Any):
     require_open_vault(vault_id)
     assert vaults[vault_id, "auction_open"] is True, "Auction is not open."
     assert current_time() < vaults[vault_id, "auction_end_time"], "Auction already ended."
-    assert isinstance(bid_amount, (int, float, decimal)), "bid_amount must be numeric."
+    assert isinstance(bid_amount, (int, decimal)), "bid_amount must be numeric."
     assert bid_amount > 0, "bid_amount must be positive."
 
     next_required = min_next_bid(vault_id)
@@ -1352,7 +1352,7 @@ def cure_auction(vault_id: int, repay_amount: Any = 0):
     if repay_amount is None:
         repay_amount = 0
 
-    assert isinstance(repay_amount, (int, float, decimal)), "repay_amount must be numeric."
+    assert isinstance(repay_amount, (int, decimal)), "repay_amount must be numeric."
     assert repay_amount >= 0, "repay_amount must be non-negative."
 
     if repay_amount > 0:
@@ -1516,7 +1516,7 @@ def cover_bad_debt(vault_type_id: int, amount: Any = None):
     if amount is None or amount == 0:
         amount = coverable
 
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "amount must be positive."
     assert amount <= coverable, "amount exceeds coverable bad debt."
 
@@ -1535,7 +1535,7 @@ def cover_bad_debt(vault_type_id: int, amount: Any = None):
 
 @export
 def recapitalize(vault_type_id: int, amount: Any):
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "amount must be positive."
 
     stable_token().transfer_from(amount=amount, to=ctx.this, main_account=ctx.caller)
@@ -1581,7 +1581,7 @@ def sweep_surplus(vault_type_id: int, amount: Any = None):
     if amount is None or amount == 0:
         amount = available
 
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "amount must be positive."
     assert amount <= available, "amount exceeds surplus buffer."
 

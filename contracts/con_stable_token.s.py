@@ -12,7 +12,7 @@ TransferEvent = LogEvent(
     {
         "from": {"type": str, "idx": True},
         "to": {"type": str, "idx": True},
-        "amount": (int, float, decimal),
+        "amount": (int, decimal),
     },
 )
 
@@ -21,7 +21,7 @@ ApproveEvent = LogEvent(
     {
         "owner": {"type": str, "idx": True},
         "spender": {"type": str, "idx": True},
-        "amount": (int, float, decimal),
+        "amount": (int, decimal),
     },
 )
 
@@ -37,7 +37,7 @@ MintEvent = LogEvent(
     "Mint",
     {
         "to": {"type": str, "idx": True},
-        "amount": (int, float, decimal),
+        "amount": (int, decimal),
     },
 )
 
@@ -45,7 +45,7 @@ BurnEvent = LogEvent(
     "Burn",
     {
         "from": {"type": str, "idx": True},
-        "amount": (int, float, decimal),
+        "amount": (int, decimal),
     },
 )
 
@@ -82,7 +82,7 @@ def seed(
     assert isinstance(token_logo_url, str), "token_logo_url must be a string."
     assert isinstance(token_logo_svg, str), "token_logo_svg must be a string."
     assert isinstance(token_website, str), "token_website must be a string."
-    assert isinstance(initial_supply, (int, float, decimal)), "initial_supply must be numeric."
+    assert isinstance(initial_supply, (int, decimal)), "initial_supply must be numeric."
     assert initial_supply >= 0, "initial_supply must be non-negative."
 
     resolved_holder = initial_holder
@@ -178,7 +178,7 @@ def allowance(owner: str, spender: str):
 
 @export
 def approve(amount: Any, to: str):
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount >= 0, "Cannot approve negative balances."
     assert isinstance(to, str) and to != "", "to must be non-empty."
 
@@ -189,7 +189,7 @@ def approve(amount: Any, to: str):
 
 @export
 def transfer(amount: Any, to: str):
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "Cannot transfer non-positive balances."
     assert isinstance(to, str) and to != "", "to must be non-empty."
     assert balances[ctx.caller] >= amount, "Not enough balance."
@@ -201,7 +201,7 @@ def transfer(amount: Any, to: str):
 
 @export
 def transfer_from(amount: Any, to: str, main_account: str):
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "Cannot transfer non-positive balances."
     assert isinstance(to, str) and to != "", "to must be non-empty."
     assert isinstance(main_account, str) and main_account != "", "main_account must be non-empty."
@@ -217,7 +217,7 @@ def transfer_from(amount: Any, to: str, main_account: str):
 @export
 def mint(amount: Any, to: str):
     require_controller()
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "Cannot mint non-positive balances."
     assert isinstance(to, str) and to != "", "to must be non-empty."
 
@@ -230,7 +230,7 @@ def mint(amount: Any, to: str):
 
 @export
 def burn(amount: Any):
-    assert isinstance(amount, (int, float, decimal)), "amount must be numeric."
+    assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "Cannot burn non-positive balances."
     assert balances[ctx.caller] >= amount, "Not enough balance to burn."
 

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 
 
@@ -21,7 +23,7 @@ def test_savings_share_price_rises_when_rewards_arrive(protocol):
 
     protocol.stable_token.mint(amount=20, to="con_savings", signer="governor")
 
-    assert protocol.savings.share_price() == pytest.approx(1.2)
+    assert protocol.savings.share_price() == Decimal("1.2")
     redeemed = protocol.savings.withdraw(shares=50, signer="alice")
     assert redeemed == pytest.approx(60)
 
