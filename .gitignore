@@ -5,3 +5,7 @@ __pycache__/
 *.egg-info/
 .DS_Store
 graphify-out/
+
+# Quality-tool output (crapper, dryer, mutator)
+.metrics/
+target/
