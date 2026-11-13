@@ -183,3 +183,18 @@ def test_bundle_deploy_budgets_fit_the_default_chain_tx_cap():
         if (contract.get("default_chi") or 0) > DEFAULT_MAX_TX_CHI
     }
     assert over_cap == {}
+
+
+# The block cap counts chi *supplied*, so a fixed per-write budget decides how
+# many bootstrap configuration writes fit in one block. The largest of them,
+# con_vaults.add_vault_type, used 2,178 chi on execution revision 12.
+DEFAULT_MAX_BLOCK_CHI = 500_000
+LARGEST_CONFIG_WRITE_CHI = 2_178
+
+
+def test_default_config_write_budget_covers_writes_without_filling_blocks(monkeypatch):
+    bootstrap = _load_bootstrap_module()
+    monkeypatch.delenv("XIAN_STABLE_TX_CHI", raising=False)
+    config = bootstrap._load_config(SimpleNamespace(public_key="a" * 64))
+    assert config.tx_chi >= 4 * LARGEST_CONFIG_WRITE_CHI
+    assert DEFAULT_MAX_BLOCK_CHI // config.tx_chi >= 50

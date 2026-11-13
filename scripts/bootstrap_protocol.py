@@ -259,7 +259,7 @@ def _load_config(wallet: Wallet) -> BootstrapConfig:
             if os.environ.get("XIAN_STABLE_DEPLOY_CHI", "").strip()
             else None
         ),
-        tx_chi=_env_int("XIAN_STABLE_TX_CHI", 200_000),
+        tx_chi=_env_int("XIAN_STABLE_TX_CHI", 10_000),
     )
 
 

@@ -138,8 +138,10 @@ contract by default after deployment and wiring are complete. Use
 The bootstrap validates and loads all bundle sources before connecting. Its
 `--bundle` option defaults to `contract-bundle.json`. Deployment order and
 per-contract chi defaults come from that bundle; `XIAN_STABLE_DEPLOY_CHI`, when
-set, overrides every deployment budget. `XIAN_STABLE_TX_CHI` controls configuration
-writes. These explicit budgets also support profiles without readonly simulation.
+set, overrides every deployment budget. `XIAN_STABLE_TX_CHI` (default 10,000)
+controls configuration writes. These explicit budgets also support profiles
+without readonly simulation. A block admits transactions by the chi they
+supply, so keep these budgets close to what the writes use.
 
 ## Governance Handoff
 
