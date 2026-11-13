@@ -16,7 +16,7 @@
       "path": "contracts/con_stable_token.s.py",
       "sha256": "9d6a7f48a35c5215bb90054d37164ca08bdb04ed0e48bdc2aa5e833648c0ee4d",
       "deploy_order": 10,
-      "default_chi": 200000
+      "default_chi": 20000
     },
     {
       "name": "con_oracle",
@@ -24,7 +24,7 @@
       "path": "contracts/con_oracle.s.py",
       "sha256": "fb1d7e764fe734018d263cdda0086f6f33183c30a565f0254a11361f3012aea2",
       "deploy_order": 20,
-      "default_chi": 200000
+      "default_chi": 20000
     },
     {
       "name": "con_savings",
@@ -32,7 +32,7 @@
       "path": "contracts/con_savings.s.py",
       "sha256": "e5748eb2ddf6180f63fe9aab382fc7a9f40c6f5ba468476d7572704cbb1a9ff2",
       "deploy_order": 30,
-      "default_chi": 240000
+      "default_chi": 20000
     },
     {
       "name": "con_vaults",
@@ -40,7 +40,7 @@
       "path": "contracts/con_vaults.s.py",
       "sha256": "54e6027e181f9a4df13bf77c3d5cf248acd2aadd5af5e2495799b8359c689917",
       "deploy_order": 40,
-      "default_chi": 320000
+      "default_chi": 100000
     },
     {
       "name": "con_psm",
@@ -48,7 +48,7 @@
       "path": "contracts/con_psm.s.py",
       "sha256": "bf5957daa9efac1c81c4a30bf59f7c864ce29f3789b6fbec388270ce7fcc6a7a",
       "deploy_order": 50,
-      "default_chi": 240000
+      "default_chi": 20000
     }
   ]
 }

@@ -168,3 +168,18 @@ def test_plan_keeps_exact_validated_source(bundle_copy):
     bootstrap._deploy_contract(client, **plan[0])
     assert client.deployed["source"] == plan[0]["source"]
     assert "def seed(" in client.deployed["source"]
+
+
+# A paid-metered chain caps each transaction at 200,000 chi by default; a deploy
+# budget above that is refused at CheckTx before the contract can run.
+DEFAULT_MAX_TX_CHI = 200_000
+
+
+def test_bundle_deploy_budgets_fit_the_default_chain_tx_cap():
+    bundle = json.loads((ROOT / "contract-bundle.json").read_text())
+    over_cap = {
+        contract["name"]: contract["default_chi"]
+        for contract in bundle["contracts"]
+        if (contract.get("default_chi") or 0) > DEFAULT_MAX_TX_CHI
+    }
+    assert over_cap == {}
