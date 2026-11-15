@@ -560,7 +560,7 @@ source = { editable = "../xian-cli" }
 dependencies = [
     { name = "pynacl" },
     { name = "xian-tech-abci" },
-    { name = "xian-tech-contracting" },
+    { name = "xian-tech-compiler-core" },
     { name = "xian-tech-py" },
 ]
 
@@ -568,7 +568,7 @@ dependencies = [
 requires-dist = [
     { name = "pynacl", specifier = ">=1.6.2,<2" },
     { name = "xian-tech-abci", editable = "../xian-abci" },
-    { name = "xian-tech-contracting", editable = "../xian-contracting" },
+    { name = "xian-tech-compiler-core", directory = "../xian-contracting/packages/xian-compiler-core" },
     { name = "xian-tech-py", editable = "../xian-py" },
 ]
 
