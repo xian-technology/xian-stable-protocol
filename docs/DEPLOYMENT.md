@@ -136,12 +136,13 @@ contract by default after deployment and wiring are complete. Use
 `--no-start-governance-handoff` only for disposable local testing.
 
 The bootstrap validates and loads all bundle sources before connecting. Its
-`--bundle` option defaults to `contract-bundle.json`. Deployment order and
-per-contract chi defaults come from that bundle; `XIAN_STABLE_DEPLOY_CHI`, when
-set, overrides every deployment budget. `XIAN_STABLE_TX_CHI` (default 10,000)
-controls configuration writes. These explicit budgets also support profiles
-without readonly simulation. A block admits transactions by the chi they
-supply, so keep these budgets close to what the writes use.
+`--bundle` option defaults to `contract-bundle.json`. Deployment order comes
+from that bundle; its `default_chi` values are manifest information. Every
+deployment and configuration write supplies its simulated chi plus the SDK
+margin. `XIAN_STABLE_DEPLOY_CHI` and `XIAN_STABLE_TX_CHI` set explicit budgets
+for profiles without readonly simulation; keep them close to what the
+transactions use, since a paid transaction pays half of the chi it leaves
+unused and a block admits transactions by the chi they supply.
 
 ## Governance Handoff
 

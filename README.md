@@ -194,7 +194,9 @@ constructor settings remain in the bootstrap script. The `deploy` group includes
 `xian-tech-cli` for shared validation and `xian-tech-py>=0.5.3,<0.6` for source
 submission.
 
-Set `XIAN_STABLE_DEPLOY_CHI` only to override all bundle deployment budgets.
+Every deployment and configuration write supplies its simulated chi plus the SDK
+margin. Set `XIAN_STABLE_DEPLOY_CHI` or `XIAN_STABLE_TX_CHI` only for a profile
+without readonly simulation; a fixed budget pays half of the chi it leaves unused.
 Sample tokens reuse the validated stable-token source.
 
 ## Validation

@@ -69,8 +69,10 @@ class BootstrapConfig:
     bid_extension_seconds: int
     mint_fee_bps: int
     redeem_fee_bps: int
+    # None: xian-py supplies the simulated chi plus its margin. A fixed budget
+    # pays half of whatever it leaves unused (revision 14).
     deploy_chi: int | None
-    tx_chi: int
+    tx_chi: int | None
 
 
 def _env_str(name: str, default: str) -> str:
@@ -79,6 +81,13 @@ def _env_str(name: str, default: str) -> str:
         return default
     normalized = value.strip()
     return normalized if normalized else default
+
+
+def _env_optional_int(name: str) -> int | None:
+    value = os.environ.get(name)
+    if value is None or not value.strip():
+        return None
+    return int(value)
 
 
 def _env_int(name: str, default: int) -> int:
@@ -141,7 +150,7 @@ def _ensure_submission_succeeded(
     return submission
 
 
-def _budget_kwargs(callable_obj: Any, value: int) -> dict[str, int]:
+def _budget_kwargs(callable_obj: Any, value: int | None) -> dict[str, int | None]:
     parameters = inspect.signature(callable_obj).parameters
     if "chi" in parameters:
         return {"chi": value}
@@ -163,7 +172,7 @@ def _send(
     function: str,
     action: str,
     *,
-    chi: int,
+    chi: int | None,
     **kwargs: Any,
 ) -> str:
     result = _ensure_submission_succeeded(
@@ -254,12 +263,8 @@ def _load_config(wallet: Wallet) -> BootstrapConfig:
         bid_extension_seconds=_env_int("XIAN_STABLE_BID_EXTENSION_SECONDS", 3600),
         mint_fee_bps=_env_int("XIAN_STABLE_PSM_MINT_FEE_BPS", 100),
         redeem_fee_bps=_env_int("XIAN_STABLE_PSM_REDEEM_FEE_BPS", 50),
-        deploy_chi=(
-            int(os.environ["XIAN_STABLE_DEPLOY_CHI"])
-            if os.environ.get("XIAN_STABLE_DEPLOY_CHI", "").strip()
-            else None
-        ),
-        tx_chi=_env_int("XIAN_STABLE_TX_CHI", 10_000),
+        deploy_chi=_env_optional_int("XIAN_STABLE_DEPLOY_CHI"),
+        tx_chi=_env_optional_int("XIAN_STABLE_TX_CHI"),
     )
 
 
@@ -297,7 +302,7 @@ def _deploy_contract(
     name: str,
     source: str,
     args: dict[str, Any],
-    chi: int,
+    chi: int | None,
 ) -> tuple[Any, bool]:
     existing_source = client.get_contract_source(name)
     if existing_source is None:
@@ -334,7 +339,7 @@ def _maybe_set_controller(
     *,
     account: str,
     enabled: bool,
-    chi: int,
+    chi: int | None,
 ) -> str | None:
     current = _bool_state(
         client,
@@ -599,9 +604,9 @@ def _build_deployment_plan(
         if role not in settings:
             continue
         name, constructor_args = settings[role]
-        chi = config.deploy_chi if config.deploy_chi is not None else entry["default_chi"]
-        if chi is None or chi <= 0:
-            raise ValueError(f"{role} requires a positive chi budget")
+        chi = config.deploy_chi
+        if chi is not None and chi <= 0:
+            raise ValueError(f"{role} chi budget must be positive")
         source = read_contract_source_from_bundle(bundle_path, entry)
         plan.append(dict(name=name, source=source, args=constructor_args, chi=chi))
         if role == "stable_token" and not skip_sample_tokens:

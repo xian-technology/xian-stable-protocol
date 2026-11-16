@@ -115,7 +115,7 @@ def bundle_copy(tmp_path):
     return tmp_path / "contract-bundle.json"
 
 
-def test_plan_uses_bundle_sources_order_and_budgets(bundle_copy, monkeypatch):
+def test_plan_uses_bundle_sources_order_and_simulated_chi(bundle_copy, monkeypatch):
     bootstrap = _load_bootstrap_module()
     monkeypatch.delenv("XIAN_STABLE_DEPLOY_CHI", raising=False)
     config = bootstrap._load_config(SimpleNamespace(public_key="a" * 64))
@@ -125,7 +125,9 @@ def test_plan_uses_bundle_sources_order_and_budgets(bundle_copy, monkeypatch):
     bundle_copy.write_text(json.dumps(manifest))
     plan = bootstrap._build_deployment_plan(bundle_copy, config, skip_sample_tokens=True)
     assert plan[0]["name"] == config.oracle_contract_name
-    assert plan[0]["chi"] == 123456
+    # default_chi is manifest information: without XIAN_STABLE_DEPLOY_CHI the
+    # deployment supplies its simulated chi (a fixed budget pays half its unused chi).
+    assert plan[0]["chi"] is None
     assert len(plan) == 5
     assert plan[0]["source"] == (bundle_copy.parent / manifest["contracts"][1]["path"]).read_text()
     full = bootstrap._build_deployment_plan(bundle_copy, config, skip_sample_tokens=False)
@@ -185,16 +187,12 @@ def test_bundle_deploy_budgets_fit_the_default_chain_tx_cap():
     assert over_cap == {}
 
 
-# The block cap counts chi *supplied*, so a fixed per-write budget decides how
-# many bootstrap configuration writes fit in one block. The largest of them,
-# con_vaults.add_vault_type, used 2,178 chi on execution revision 12.
-DEFAULT_MAX_BLOCK_CHI = 500_000
-LARGEST_CONFIG_WRITE_CHI = 2_178
-
-
-def test_default_config_write_budget_covers_writes_without_filling_blocks(monkeypatch):
+def test_configuration_writes_supply_simulated_chi_unless_a_budget_is_set(monkeypatch):
+    # A fixed per-write budget pays half of what it leaves unused and fills the
+    # block cap (counted by supplied chi); xian-py's simulated chi does neither.
     bootstrap = _load_bootstrap_module()
     monkeypatch.delenv("XIAN_STABLE_TX_CHI", raising=False)
-    config = bootstrap._load_config(SimpleNamespace(public_key="a" * 64))
-    assert config.tx_chi >= 4 * LARGEST_CONFIG_WRITE_CHI
-    assert DEFAULT_MAX_BLOCK_CHI // config.tx_chi >= 50
+    assert bootstrap._load_config(SimpleNamespace(public_key="a" * 64)).tx_chi is None
+
+    monkeypatch.setenv("XIAN_STABLE_TX_CHI", "9000")
+    assert bootstrap._load_config(SimpleNamespace(public_key="a" * 64)).tx_chi == 9000
