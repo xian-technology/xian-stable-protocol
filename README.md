@@ -49,8 +49,8 @@ The bootstrap script:
 - sets fee-routing addresses on `con_vaults` and `con_psm`
 - seeds a default vault type only when one does not already exist
 - starts protocol governance handoff by default unless explicitly disabled
-- uses explicit chi budgets for writes (does not depend on readonly
-  simulation being enabled on the target node)
+- simulates writes and supplies the estimated chi plus the SDK margin;
+  explicit budgets are available for profiles without readonly simulation
 - validates that user-deployed contract names start with `con_`
 
 The operator wallet must match the configured initial governor during
@@ -188,8 +188,8 @@ manifests and node setup stay in `xian-configs`; protocol deployment stays here.
 ## Bootstrap validation
 
 The bootstrap validates `contract-bundle.json` before connecting to the node,
-loads the verified sources once, and follows the bundle's deployment order and
-chi defaults. Use `--bundle` to select another validated bundle. Product-specific
+loads the verified sources once, and follows the bundle's deployment order.
+Use `--bundle` to select another validated bundle. Product-specific
 constructor settings remain in the bootstrap script. The `deploy` group includes
 `xian-tech-cli` for shared validation and `xian-tech-py>=0.5.3,<0.6` for source
 submission.
