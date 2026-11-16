@@ -88,6 +88,8 @@ def seed(
     if resolved_governor is None or resolved_governor == "":
         resolved_governor = ctx.caller
 
+    require_account(resolved_governor)
+
     stable_token_contract.set(stable_token_contract_name)
     governor.set(resolved_governor)
     proposed_governor.set(None)
@@ -103,6 +105,16 @@ def seed(
 
 def stable_token():
     return importlib.import_module(stable_token_contract.get())
+
+
+def require_account(account: str):
+    assert isinstance(account, str) and account != "", "Account must be non-empty."
+    if len(account) != 64 or account == account.lower():
+        return
+    for character in account.lower():
+        if character not in "0123456789abcdef":
+            return
+    assert False, "Account key must use canonical lowercase hex."
 
 
 def require_governor():
@@ -128,7 +140,7 @@ def governor_of():
 @export
 def start_governance_transfer(new_governor: str):
     require_governor()
-    assert isinstance(new_governor, str) and new_governor != "", "new_governor must be non-empty."
+    require_account(new_governor)
     proposed_governor.set(new_governor)
     GovernanceTransferStartedEvent(
         {
@@ -245,7 +257,7 @@ def withdraw(shares: Any):
 def transfer(amount: Any, to: str):
     assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "Cannot transfer non-positive balances."
-    assert isinstance(to, str) and to != "", "to must be non-empty."
+    require_account(to)
     assert balances[ctx.caller] >= amount, "Not enough balance."
 
     balances[ctx.caller] -= amount
@@ -257,7 +269,7 @@ def transfer(amount: Any, to: str):
 def approve(amount: Any, to: str):
     assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount >= 0, "Cannot approve negative balances."
-    assert isinstance(to, str) and to != "", "to must be non-empty."
+    require_account(to)
 
     approvals[ctx.caller, to] = amount
     ApproveEvent({"owner": ctx.caller, "spender": to, "amount": amount})
@@ -268,8 +280,8 @@ def approve(amount: Any, to: str):
 def transfer_from(amount: Any, to: str, main_account: str):
     assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "Cannot transfer non-positive balances."
-    assert isinstance(to, str) and to != "", "to must be non-empty."
-    assert isinstance(main_account, str) and main_account != "", "main_account must be non-empty."
+    require_account(to)
+    require_account(main_account)
     assert approvals[main_account, ctx.caller] >= amount, "Not enough approved balance."
     assert balances[main_account] >= amount, "Not enough balance."
 

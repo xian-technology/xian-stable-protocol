@@ -292,6 +292,13 @@ def collateral_contract(vault_type_id: int):
     return importlib.import_module(vault_type_value(vault_type_id, "collateral_contract"))
 
 
+def receive_collateral(vault_type_id: int, amount: Any):
+    token = collateral_contract(vault_type_id)
+    balance_before = token.balance_of(address=ctx.this)
+    token.transfer_from(amount=amount, to=ctx.this, main_account=ctx.caller)
+    assert token.balance_of(address=ctx.this) == balance_before + amount, "Vault requires an exact collateral transfer."
+
+
 def current_oracle_price(vault_type_id: int):
     return oracle().get_price(asset=vault_type_value(vault_type_id, "oracle_key"))
 
@@ -1018,11 +1025,7 @@ def create_vault(vault_type_id: int, collateral_amount: Any, debt_amount: Any):
     assert current_total_debt(vault_type_id, rate) + debt_amount <= vault_type_value(vault_type_id, "debt_ceiling"), "debt ceiling exceeded."
     assert collateralization_bps_for(vault_type_id, collateral_amount, debt_amount) >= required_min_ratio(vault_type_id), "Not enough collateral."
 
-    collateral_contract(vault_type_id).transfer_from(
-        amount=collateral_amount,
-        to=ctx.this,
-        main_account=ctx.caller,
-    )
+    receive_collateral(vault_type_id, collateral_amount)
 
     vault_id = vault_count.get() + 1
     vault_count.set(vault_id)
@@ -1066,11 +1069,7 @@ def deposit_collateral(vault_id: int, amount: Any):
     assert isinstance(amount, (int, decimal)), "amount must be numeric."
     assert amount > 0, "amount must be positive."
 
-    collateral_contract(vault_type_id_of(vault_id)).transfer_from(
-        amount=amount,
-        to=ctx.this,
-        main_account=ctx.caller,
-    )
+    receive_collateral(vault_type_id_of(vault_id), amount)
     vaults[vault_id, "collateral_amount"] = vault_collateral(vault_id) + amount
 
     CollateralChangedEvent(

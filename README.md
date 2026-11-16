@@ -81,6 +81,16 @@ The protocol keeps the original high-level model:
 - a peg-stability module offers direct mint and redeem flows against
   reserve assets
 
+Token and savings-share destinations that are 64-character hexadecimal account
+keys must use lowercase. Transfers, minting, approvals and authority changes
+reject uppercase or mixed-case keys before changing balances; named contract
+destinations retain their exact spelling.
+
+Collateral and PSM reserve deposits must transfer exactly the requested amount
+into protocol custody. The contracts verify the balance increase before
+crediting collateral or minting stable tokens. Fee-on-transfer and no-op tokens
+are rejected atomically rather than creating debt against unreceived assets.
+
 But the contracts are intentionally **not** a literal port. They were
 redesigned for current Xian / Contracting patterns:
 

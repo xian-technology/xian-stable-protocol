@@ -226,11 +226,13 @@ def mint_stable(reserve_amount: Any):
     assert_not_paused()
     quote = quote_mint(reserve_amount=reserve_amount)
 
+    reserve_before = reserve_balance()
     reserve_token().transfer_from(
         amount=quote["reserve_in"],
         to=ctx.this,
         main_account=ctx.caller,
     )
+    assert reserve_balance() == reserve_before + quote["reserve_in"], "PSM requires an exact reserve transfer."
 
     destination = fee_destination()
     if quote["fee"] > 0 and destination != ctx.this:
