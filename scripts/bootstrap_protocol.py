@@ -323,6 +323,19 @@ def _deploy_contract(
     return client.contract(name), False
 
 
+def _ensure_time_checkpoints(client: Xian) -> None:
+    name = "time_checkpoints"
+    if client.get_contract_source(name) is None:
+        raise RuntimeError("Required chain contract 'time_checkpoints' is missing.")
+    if client.get_state(name, "__owner__") is not None:
+        raise RuntimeError("time_checkpoints must be immutable (owner None).")
+    version = client.get_state(name, "protocol_version")
+    if type(version) is not int or version != 1:
+        raise RuntimeError("time_checkpoints protocol version 1 is required.")
+    if client.get_state(name, "keeper_ready") is not True:
+        raise RuntimeError("time_checkpoints requires the active node keeper before deployment.")
+
+
 def _ensure_chain_governance(client: Xian, config: BootstrapConfig) -> None:
     for contract_name in (
         config.membership_contract_name,
@@ -505,35 +518,14 @@ def _snapshot_vault_type(
     contract_name: str,
     vault_type_id: int,
 ) -> dict[str, Any]:
-    fields = (
-        "active",
-        "collateral_contract",
-        "oracle_key",
-        "min_collateral_ratio_bps",
-        "liquidation_ratio_bps",
-        "liquidation_bonus_bps",
-        "partial_liquidation_target_ratio_bps",
-        "debt_ceiling",
-        "min_debt",
-        "stability_fee_bps",
-        "auction_duration_seconds",
-        "min_bid_increment_bps",
-        "extension_window_seconds",
-        "bid_extension_seconds",
-        "surplus_buffer_bps",
-        "rate_accumulator",
-        "normalized_debt_total",
-        "principal_outstanding",
-        "auction_debt_locked",
-        "auction_principal_locked",
-        "fees_distributed",
-        "surplus_buffer",
-        "bad_debt",
-    )
-    return {
-        field: client.get_state(contract_name, "vault_types", vault_type_id, field)
-        for field in fields
-    }
+    projected = client.contract(contract_name).call("get_vault_type", vault_type_id=vault_type_id)
+    if not isinstance(projected, dict):
+        raise RuntimeError(f"{contract_name}.get_vault_type must return an object")
+    snapshot = dict(projected)
+    # Preserve the report's established keys using the authoritative live view.
+    snapshot["normalized_debt_total"] = projected["live_normalized_debt_total"]
+    snapshot["principal_outstanding"] = projected["live_principal_outstanding"]
+    return snapshot
 
 
 def _snapshot_psm_state(client: Xian, contract_name: str) -> dict[str, Any]:
@@ -665,8 +657,19 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = _build_parser().parse_args(argv)
+def _ensure_sample_tokens(
+    client: Xian, config: BootstrapConfig, *, skip_sample_tokens: bool
+) -> None:
+    if not skip_sample_tokens:
+        return
+    for name in (config.collateral_contract_name, config.reserve_contract_name):
+        if client.get_contract_source(name) is None:
+            raise RuntimeError(f"Configured token contract '{name}' does not exist.")
+
+
+def _prepare_bootstrap(
+    args: argparse.Namespace,
+) -> tuple[Wallet, BootstrapConfig, list[dict[str, Any]]]:
     wallet = _require_wallet()
     config = _load_config(wallet)
     _validate_config(config, skip_sample_tokens=args.skip_sample_tokens)
@@ -685,6 +688,13 @@ def main(argv: list[str] | None = None) -> int:
 
     plan = _build_deployment_plan(args.bundle, config, skip_sample_tokens=args.skip_sample_tokens)
 
+    return wallet, config, plan
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+    wallet, config, plan = _prepare_bootstrap(args)
+
     client_config = XianClientConfig(retry=RetryPolicy(max_attempts=3, initial_delay_seconds=0.25))
 
     with Xian(
@@ -693,14 +703,12 @@ def main(argv: list[str] | None = None) -> int:
         wallet=wallet,
         config=client_config,
     ) as client:
+        _ensure_time_checkpoints(client)
         _ensure_chain_governance(client, config)
         status = client.get_node_status()
         print(f"Connected to {status.network} at height {status.latest_block_height}")
 
-        if args.skip_sample_tokens:
-            for name in (config.collateral_contract_name, config.reserve_contract_name):
-                if client.get_contract_source(name) is None:
-                    raise RuntimeError(f"Configured token contract '{name}' does not exist.")
+        _ensure_sample_tokens(client, config, skip_sample_tokens=args.skip_sample_tokens)
         deployed = {}
         for item in plan:
             deployed[item["name"]], _ = _deploy_contract(client, **item)

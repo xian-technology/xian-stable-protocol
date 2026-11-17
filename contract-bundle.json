@@ -3,7 +3,7 @@
   "schema_version": 1,
   "name": "xian-stable-protocol",
   "display_name": "Xian Stable Protocol",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Pinned stable-protocol contract bundle for validation and operator bootstrap flows.",
   "source": {
     "repo": "https://github.com/xian-technology/xian-stable-protocol",
@@ -38,7 +38,7 @@
       "name": "con_vaults",
       "role": "vaults",
       "path": "contracts/con_vaults.s.py",
-      "sha256": "6d0685527d6a11f299da079014db8cd598c03da8b00b0ff1fd7ed0b38b41321f",
+      "sha256": "a113b67282559f46669a409348e870f0538d230183892d92e1b0bea9944366c4",
       "deploy_order": 40,
       "default_chi": 100000
     },

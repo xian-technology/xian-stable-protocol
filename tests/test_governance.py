@@ -56,7 +56,7 @@ def test_xian_governance_can_update_protocol_risk_parameters(protocol):
         signer="governor",
     )
 
-    start = {"now": Datetime(year=2026, month=2, day=1)}
+    start = protocol.step(10, Datetime(year=2026, month=2, day=1))
 
     accept = protocol.governance.propose_contract_call(
         target_contract="con_vaults",
@@ -91,6 +91,11 @@ def test_xian_governance_can_update_protocol_risk_parameters(protocol):
     )
 
     assert updated["status"] == "executed"
+    assert (
+        protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)["stability_fee_bps"]
+        == 500
+    )
+    protocol.step(11, start["now"])
     assert (
         protocol.vaults.get_vault_type(vault_type_id=protocol.vault_type_id)["stability_fee_bps"]
         == 750

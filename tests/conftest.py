@@ -1,8 +1,10 @@
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from contracting.local import ContractingClient
+from xian_runtime_types.time import Datetime
 
 ROOT = Path(__file__).absolute().parents[1]
 CONTRACTS_DIR = ROOT / "contracts"
@@ -24,8 +26,15 @@ def protocol(tmp_path):
     storage_home = tmp_path / "xian"
     storage_home.mkdir(parents=True, exist_ok=True)
 
-    client = ContractingClient(storage_home=storage_home)
+    client = ContractingClient(
+        storage_home=storage_home, environment={"block_num": 1, "now": Datetime(2026, 1, 1)}
+    )
     client.flush()
+    configs_dir = Path(os.environ.get("XIAN_CONFIGS_DIR", ROOT.parent / "xian-configs"))
+    checkpoint_source = configs_dir / "contracts/time_checkpoints.s.py"
+    client.submit(checkpoint_source.read_text(), name="time_checkpoints", owner=None)
+    clock = client.get_contract_proxy("time_checkpoints")
+    clock.process_time_anchors(signer="__time_checkpoints__")
 
     members = submit_contract(
         client,
@@ -176,8 +185,17 @@ def protocol(tmp_path):
         savings.deposit(assets=amount, signer=account)
         return amount
 
+    def step(height, when):
+        """Advance the real bounded keeper before paid calls at this height."""
+        environment = {"block_num": height, "now": when}
+        client.environment.update(environment)
+        clock.process_time_anchors(signer="__time_checkpoints__", environment=environment)
+        return environment
+
     return SimpleNamespace(
+        step=step,
         seed_saver=seed_saver,
+        clock=clock,
         client=client,
         members=members,
         governance=governance,

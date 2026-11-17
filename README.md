@@ -51,6 +51,7 @@ The bootstrap script:
 - starts protocol governance handoff by default unless explicitly disabled
 - simulates writes and supplies the estimated chi plus the SDK margin;
   explicit budgets are available for profiles without readonly simulation
+- requires immutable chain `time_checkpoints` protocol 1 with an active node keeper
 - validates that user-deployed contract names start with `con_`
 
 The operator wallet must match the configured initial governor during
@@ -249,3 +250,41 @@ SDK revision the rest of the Xian stack is using.
 - [docs/ROADMAP.md](docs/ROADMAP.md) — production-hardening work
 - [`../xian-configs/README.md`](../xian-configs/README.md) — network manifests and templates
 - [`../xian-cli/README.md`](../xian-cli/README.md) — operator CLI
+
+## Debt and auction clocks
+
+New draws, fee-policy changes, auction openings/restarts, and qualifying bid
+extensions request an immutable successor-height clock from the chain's
+`time_checkpoints` contract. This prevents a stale first header after an idle
+period from consuming a newly created interest period or auction window.
+The node processes at most 32 requests before paid transactions in each block.
+If the queue is busy, the clock remains pending until a later block serves it.
+
+A new draw is immediately minted and owed in full, including for collateral
+ratios, debt ceilings, repayment and liquidation. It earns no interest before
+its anchor. Each vault type has one unresolved draw group; same-height draws
+coalesce. A later-height draw waits if that group's anchor is still pending.
+Existing debt continues earning the old fee until a fee change's anchor; then
+the captured new fee applies. Same-height fee changes coalesce to the last
+requested rate. Pure views project ready anchors without requiring a write.
+
+An auction's `auction_opened_at` and `auction_end_time` are `None` while its
+opening clock is pending. A pending extension also makes the end time `None`.
+Bids preserve their normal amounts, refunds and permissions, while settlement
+requires a resolved deadline. Opening/restart captures the configured duration.
+Each qualifying bid captures its extension; same-height additive extensions
+are retained even when governance changes the policy. The final deadline is
+at least the successor clock plus the full newly promised extension interval.
+If an earlier extension is still pending, a later-height qualifying bid waits
+rather than overwriting it.
+
+Native fixed decimals have 30 fractional digits. Live debt consists of normalized
+shares plus an explicitly owned normalization remainder (`debt_carry`). A draw
+smaller than one share remains fully owed and cannot block the vault type.
+Sub-share carry does not separately earn unrepresentable interest until it is
+folded into shares on a vault write. Archived groups can contain signed
+allocation components; an actual vault write normalizes its full owed debt into
+floor shares and a nonnegative carry. Type totals change only by exact owner
+deltas, and never independently normalize aggregate carry. Positive debt is
+never silently forgiven as dust. Full repayment removes all shares, carry and
+principal, and only principal repayment burns tokens.

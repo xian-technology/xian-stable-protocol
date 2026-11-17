@@ -32,6 +32,11 @@ uv run --group deploy pytest -q
 uv run --group deploy python scripts/bootstrap_protocol.py --no-start-governance-handoff
 ```
 
+The target chain must include the canonical immutable `time_checkpoints`
+contract, protocol version 1, and the node keeper must have processed a real
+block (`keeper_ready=True`). Bootstrap verifies these before any deployment
+or configuration write. It does not deploy or impersonate the reserved keeper.
+
 The `deploy` group expects the standard Xian workspace layout, including the
 sibling `xian-py`, `xian-contracting`, `xian-cli`, and `xian-abci` checkouts.
 
@@ -173,8 +178,10 @@ Verify at minimum:
 - `con_stable_token.is_controller('con_psm')` is `True`
 - `con_oracle.price_info('<asset-key>')` returns a live price with enough fresh
   reports
-- `con_vaults.get_vault_type(1)` returns the expected collateral and fee
-  settings
+- `con_vaults.get_vault_type(1)` returns the expected collateral and effective fee
+  settings, with any pending fee/debt checkpoint fields visible
+- `con_vaults.get_auction(id)` has a resolved deadline before settlement;
+  pending clock dates are `None` and must not be replaced with creation time
 - `con_psm.get_state()` reports the intended reserve token, fee settings, and
   treasury address
 
@@ -185,3 +192,20 @@ Verify at minimum:
 - The local harness contracts in this repository are only for standalone unit
   tests.
 - Fee routing is part of correct deployment, not an optional polish step.
+
+## Clock and accounting integration
+
+Use `get_vault_type`, `get_vault` and `get_auction` for current projections.
+Raw storage may still hold the prior fee/rate until a write materializes a
+ready anchor. New debt and principal remain fully owed during that interval.
+Pending dates become ordinary VM datetimes when the immutable anchor is ready;
+clients must show the pending state and keep settlement disabled until then.
+For a paused or idle network, resume the node keeper before retrying an action
+that reports an earlier pending checkpoint. Do not supply an operator-created
+clock or overwrite the chain's immutable registry.
+
+The debt representation and 30-digit normalization remainder policy are
+specified in the repository README. Restoring a cancelled auction preserves
+both its full unpaid debt and its separate principal component; it creates no
+new tokens. Positive residual debt below `min_debt` makes a partial repayment
+fail atomically; repay the full quoted debt to close the position.

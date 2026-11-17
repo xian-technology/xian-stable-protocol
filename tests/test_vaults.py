@@ -42,8 +42,7 @@ def test_inactive_existing_vault_type_can_still_be_recapitalized(protocol):
 
 
 def test_create_and_close_vault_routes_fees_to_savings_and_surplus(protocol):
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    end = {"now": Datetime(year=2027, month=1, day=1)}
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
     saved = protocol.seed_saver()
 
     vault_id = protocol.vaults.create_vault(
@@ -54,9 +53,11 @@ def test_create_and_close_vault_routes_fees_to_savings_and_surplus(protocol):
         environment=start,
     )
 
+    protocol.step(11, start["now"])
     protocol.stable_token.mint(amount=10, to="alice", signer="governor")
     protocol.stable_token.approve(amount=200, to="con_vaults", signer="alice")
 
+    end = protocol.step(1000, Datetime(year=2027, month=1, day=1))
     returned_collateral = protocol.vaults.close_vault(
         vault_id=vault_id,
         signer="alice",
@@ -73,8 +74,7 @@ def test_create_and_close_vault_routes_fees_to_savings_and_surplus(protocol):
 
 
 def test_fees_route_to_treasury_while_savings_has_no_depositors(protocol):
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    end = {"now": Datetime(year=2027, month=1, day=1)}
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
     vault_id = protocol.vaults.create_vault(
         vault_type_id=protocol.vault_type_id,
         collateral_amount=100,
@@ -82,9 +82,11 @@ def test_fees_route_to_treasury_while_savings_has_no_depositors(protocol):
         signer="alice",
         environment=start,
     )
+    protocol.step(11, start["now"])
     protocol.stable_token.mint(amount=10, to="alice", signer="governor")
     protocol.stable_token.approve(amount=200, to="con_vaults", signer="alice")
 
+    end = protocol.step(1000, Datetime(year=2027, month=1, day=1))
     protocol.vaults.close_vault(vault_id=vault_id, signer="alice", environment=end)
 
     assert protocol.savings.total_assets() == 0
@@ -163,7 +165,7 @@ def test_auction_can_be_cured_by_owner_before_bids(protocol):
 
 
 def test_auction_can_be_cancelled_after_price_recovery_without_bids(protocol):
-    start = {"now": Datetime(year=2026, month=1, day=1)}
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
 
     vault_id = protocol.vaults.create_vault(
         vault_type_id=protocol.vault_type_id,
@@ -187,9 +189,7 @@ def test_auction_can_be_cancelled_after_price_recovery_without_bids(protocol):
 
 
 def test_auction_extends_records_bad_debt_and_allows_loser_refund(protocol):
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    near_end = {"now": Datetime(year=2026, month=1, day=1, hour=23, minute=30)}
-    end = {"now": Datetime(year=2026, month=1, day=2, hour=1, minute=1)}
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
 
     vault_id = protocol.vaults.create_vault(
         vault_type_id=protocol.vault_type_id,
@@ -215,6 +215,8 @@ def test_auction_extends_records_bad_debt_and_allows_loser_refund(protocol):
         signer="bob",
         environment=start,
     )
+    protocol.step(11, start["now"])
+    near_end = protocol.step(100, Datetime(year=2026, month=1, day=1, hour=23, minute=30))
     protocol.vaults.bid(
         vault_id=vault_id,
         bid_amount=Decimal("50.4"),
@@ -222,7 +224,9 @@ def test_auction_extends_records_bad_debt_and_allows_loser_refund(protocol):
         environment=near_end,
     )
 
+    protocol.step(101, near_end["now"])
     auction = protocol.vaults.get_auction(vault_id=vault_id)
+    end = protocol.step(1000, Datetime(year=2026, month=1, day=2, hour=1, minute=1))
     settlement = protocol.vaults.settle_auction(
         vault_id=vault_id,
         signer="bob",
@@ -243,8 +247,7 @@ def test_auction_extends_records_bad_debt_and_allows_loser_refund(protocol):
 
 
 def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
-    fee_start = {"now": Datetime(year=2026, month=1, day=1)}
-    fee_end = {"now": Datetime(year=2027, month=1, day=1)}
+    fee_start = protocol.step(10, Datetime(year=2026, month=1, day=1))
     saved = protocol.seed_saver()
 
     fee_vault_id = protocol.vaults.create_vault(
@@ -254,16 +257,17 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
         signer="alice",
         environment=fee_start,
     )
+    protocol.step(11, fee_start["now"])
     protocol.stable_token.mint(amount=10, to="alice", signer="governor")
     protocol.stable_token.approve(amount=200, to="con_vaults", signer="alice")
+    fee_end = protocol.step(1000, Datetime(year=2027, month=1, day=1))
     protocol.vaults.close_vault(
         vault_id=fee_vault_id,
         signer="alice",
         environment=fee_end,
     )
 
-    auction_start = {"now": Datetime(year=2026, month=2, day=1)}
-    auction_end = {"now": Datetime(year=2026, month=2, day=2)}
+    auction_start = protocol.step(2000, Datetime(year=2028, month=2, day=1))
     auction_vault_id = protocol.vaults.create_vault(
         vault_type_id=protocol.vault_type_id,
         collateral_amount=100,
@@ -286,6 +290,8 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
         signer="carol",
         environment=auction_start,
     )
+    protocol.step(2001, auction_start["now"])
+    auction_end = protocol.step(3000, Datetime(year=2028, month=2, day=2))
     protocol.vaults.settle_auction(
         vault_id=auction_vault_id,
         signer="alice",
@@ -313,8 +319,7 @@ def test_surplus_can_cover_bad_debt_and_recapitalization_adds_buffer(protocol):
 
 
 def test_stability_fee_change_applies_only_from_the_change_time(protocol):
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    change = {"now": Datetime(year=2027, month=1, day=1)}
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
 
     vault_id = protocol.vaults.create_vault(
         vault_type_id=protocol.vault_type_id,
@@ -324,6 +329,8 @@ def test_stability_fee_change_applies_only_from_the_change_time(protocol):
         environment=start,
     )
 
+    protocol.step(11, start["now"])
+    change = protocol.step(100, Datetime(year=2027, month=1, day=1))
     protocol.vaults.set_vault_type_fee(
         vault_type_id=protocol.vault_type_id,
         stability_fee_bps=5000,
@@ -331,6 +338,7 @@ def test_stability_fee_change_applies_only_from_the_change_time(protocol):
         environment=change,
     )
 
+    change = protocol.step(101, change["now"])
     vault = protocol.vaults.get_vault(vault_id=vault_id, environment=change)
     assert vault["debt"] == pytest.approx(105)
 
@@ -361,53 +369,53 @@ def open_unsafe_auction(protocol, price, environment):
     return vault_id
 
 
-def test_first_bid_must_cover_debt_when_collateral_covers_it(protocol):
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    # 129% collateralized: below the 130% liquidation ratio but not underwater.
-    vault_id = open_unsafe_auction(protocol, Decimal("1.29"), start)
+@pytest.mark.parametrize(
+    ("price", "minimum", "rejected_bid"),
+    [
+        pytest.param(Decimal("1.29"), 100, Decimal("99.99"), id="debt-reserve"),
+        pytest.param(Decimal("0.5"), Decimal("47.5"), 47, id="discounted-collateral"),
+    ],
+)
+def test_first_bid_must_cover_debt_or_discounted_collateral_value(
+    protocol, price, minimum, rejected_bid
+):
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
+    # Below the 130% liquidation ratio, reserve either debt or discounted value.
+    vault_id = open_unsafe_auction(protocol, price, start)
+    start = protocol.step(11, start["now"])
 
-    assert protocol.vaults.get_auction(vault_id=vault_id)["min_next_bid"] == 100
+    assert protocol.vaults.get_auction(vault_id=vault_id)["min_next_bid"] == minimum
     with pytest.raises(AssertionError, match="Bid is too low"):
         protocol.vaults.bid(
-            vault_id=vault_id, bid_amount=Decimal("99.99"), signer="bob", environment=start
+            vault_id=vault_id, bid_amount=rejected_bid, signer="bob", environment=start
         )
 
     assert (
-        protocol.vaults.bid(vault_id=vault_id, bid_amount=100, signer="bob", environment=start)
-        == 100
-    )
-
-
-def test_first_bid_on_underwater_vault_must_cover_discounted_collateral_value(protocol):
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    # Collateral is worth 50 against 100 debt; the 5% liquidation bonus is the discount.
-    vault_id = open_unsafe_auction(protocol, Decimal("0.5"), start)
-
-    assert protocol.vaults.get_auction(vault_id=vault_id)["min_next_bid"] == Decimal("47.5")
-    with pytest.raises(AssertionError, match="Bid is too low"):
-        protocol.vaults.bid(vault_id=vault_id, bid_amount=47, signer="bob", environment=start)
-
-    protocol.vaults.bid(
-        vault_id=vault_id, bid_amount=Decimal("47.5"), signer="bob", environment=start
+        protocol.vaults.bid(vault_id=vault_id, bid_amount=minimum, signer="bob", environment=start)
+        == minimum
     )
 
 
 def test_auction_without_bids_can_be_restarted_and_settled(protocol):
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    ended = {"now": Datetime(year=2026, month=1, day=3)}
-    restarted_end = {"now": Datetime(year=2026, month=1, day=4, hour=1)}
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
     vault_id = open_unsafe_auction(protocol, Decimal("0.5"), start)
+    start = protocol.step(11, start["now"])
 
+    ended = protocol.step(100, Datetime(year=2026, month=1, day=3))
     with pytest.raises(AssertionError, match="Auction already ended"):
         protocol.vaults.bid(vault_id=vault_id, bid_amount=60, signer="bob", environment=ended)
 
     end_time = protocol.vaults.restart_auction(vault_id=vault_id, signer="carol", environment=ended)
+    assert end_time is None
+    ended = protocol.step(101, ended["now"])
+    end_time = protocol.vaults.get_auction(vault_id=vault_id)["auction_end_time"]
     assert str(end_time).startswith("2026-01-04 00:00:00")
     auction = protocol.vaults.get_auction(vault_id=vault_id)
     assert auction["auction_open"] is True
     assert auction["debt_snapshot"] == 100
 
     protocol.vaults.bid(vault_id=vault_id, bid_amount=60, signer="bob", environment=ended)
+    restarted_end = protocol.step(1000, Datetime(year=2026, month=1, day=4, hour=1))
     settlement = protocol.vaults.settle_auction(
         vault_id=vault_id, signer="carol", environment=restarted_end
     )
@@ -416,17 +424,14 @@ def test_auction_without_bids_can_be_restarted_and_settled(protocol):
 
 
 def test_auction_restart_requires_an_ended_auction_without_bids(protocol):
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    ended = {"now": Datetime(year=2026, month=1, day=3)}
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
     vault_id = open_unsafe_auction(protocol, Decimal("0.5"), start)
+    start = protocol.step(11, start["now"])
 
     with pytest.raises(AssertionError, match="Auction is still open"):
         protocol.vaults.restart_auction(vault_id=vault_id, signer="carol", environment=start)
 
     protocol.vaults.bid(vault_id=vault_id, bid_amount=60, signer="bob", environment=start)
-    with pytest.raises(AssertionError, match="Auction already has bids"):
-        protocol.vaults.restart_auction(vault_id=vault_id, signer="carol", environment=ended)
-
     other_vault = protocol.vaults.create_vault(
         vault_type_id=protocol.vault_type_id,
         collateral_amount=300,
@@ -434,5 +439,8 @@ def test_auction_restart_requires_an_ended_auction_without_bids(protocol):
         signer="carol",
         environment=start,
     )
+    ended = protocol.step(100, Datetime(year=2026, month=1, day=3))
+    with pytest.raises(AssertionError, match="Auction already has bids"):
+        protocol.vaults.restart_auction(vault_id=vault_id, signer="carol", environment=ended)
     with pytest.raises(AssertionError, match="Auction is not open"):
         protocol.vaults.restart_auction(vault_id=other_vault, signer="carol", environment=ended)

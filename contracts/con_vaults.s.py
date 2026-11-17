@@ -1,6 +1,7 @@
+import time_checkpoints
+
 BPS_DENOMINATOR = 10000
 SECONDS_PER_YEAR = 31536000
-DUST = 0.000000001
 
 vault_type_ids = Variable()
 vault_type_count = Variable()
@@ -9,6 +10,10 @@ vault_count = Variable()
 vault_types = Hash(default_value=None)
 vaults = Hash(default_value=None)
 auction_bids = Hash(default_value=0)
+debt_group_rates = Hash(default_value=None)
+debt_group_remaining = Hash(default_value=0)
+debt_group_shares = Hash(default_value=0)
+debt_group_carry = Hash(default_value=0)
 
 stable_token_contract = Variable()
 oracle_contract = Variable()
@@ -248,14 +253,6 @@ def current_time():
     return now
 
 
-def elapsed_seconds(since_time):
-    if since_time is None:
-        return 0
-    delta = current_time() - since_time
-    elapsed = delta.seconds
-    if elapsed < 0:
-        return 0
-    return elapsed
 
 
 def seconds_until(target_time):
@@ -268,8 +265,9 @@ def seconds_until(target_time):
     return remaining
 
 
-def is_zeroish(value):
-    return value <= DUST
+def vault_value(vault_id: int, field: str, fallback: Any = None):
+    value = vaults[vault_id, field]
+    return fallback if value is None else value
 
 
 def vault_type_value(vault_type_id: int, field: str, fallback: Any = None):
@@ -303,61 +301,295 @@ def current_oracle_price(vault_type_id: int):
     return oracle().get_price(asset=vault_type_value(vault_type_id, "oracle_key"))
 
 
+
+def elapsed_to(since_time, until_time):
+    if since_time is None:
+        return 0
+    return max(0, (until_time - since_time).seconds)
+
+
+def linear_rate(base, fee_bps, since_time, until_time):
+    return base * (1 + fee_bps * elapsed_to(since_time, until_time) / SECONDS_PER_YEAR / BPS_DENOMINATOR)
+
+
+def fee_anchor(vault_type_id: int):
+    height = vault_type_value(vault_type_id, "pending_fee_height")
+    if height is None:
+        return None
+    return time_checkpoints.get_anchor(height=height)
+
+
+def effective_fee(vault_type_id: int):
+    if fee_anchor(vault_type_id) is not None:
+        return vault_type_value(vault_type_id, "pending_fee_bps")
+    return vault_type_value(vault_type_id, "stability_fee_bps")
+
+
+def rate_events(vault_type_id: int):
+    events = []
+    debt_height = vault_type_value(vault_type_id, "pending_debt_height")
+    if debt_height is not None:
+        anchor = time_checkpoints.get_anchor(height=debt_height)
+        if anchor is not None:
+            events.append({"time": anchor, "fee": None})
+    pending_fee = vault_type_value(vault_type_id, "pending_fee_bps")
+    anchor = fee_anchor(vault_type_id)
+    if anchor is not None and pending_fee != vault_type_value(vault_type_id, "stability_fee_bps", 0):
+        events.append({"time": anchor, "fee": pending_fee})
+    if len(events) == 2 and events[0]["time"] > events[1]["time"]:
+        return [events[1], events[0]]
+    return events
+
+
+def rate_at(vault_type_id: int, until_time):
+    base = vault_type_value(vault_type_id, "rate_accumulator", 1)
+    since_time = vault_type_value(vault_type_id, "last_rate_time")
+    fee = vault_type_value(vault_type_id, "stability_fee_bps", 0)
+    # At most one ready debt group and one ready fee change; no history scan.
+    for event in rate_events(vault_type_id):
+        if event["time"] <= until_time:
+            assert since_time is None or event["time"] >= since_time, "Rate checkpoint precedes its base."
+            base = linear_rate(base, fee, since_time, event["time"])
+            since_time = event["time"]
+            if event["fee"] is not None:
+                fee = event["fee"]
+    return linear_rate(base, fee, since_time, until_time)
+
+
+def raw_live_shares_total(vault_type_id: int):
+    return vault_type_value(vault_type_id, "normalized_debt_total", 0)
+
+
+def pending_group_debt(vault_type_id: int):
+    return vault_type_value(vault_type_id, "pending_debt_total", 0)
+
+
+def group_rate(vault_type_id: int, height: int):
+    stored = debt_group_rates[vault_type_id, height]
+    if stored is not None:
+        return stored
+    assert vault_type_value(vault_type_id, "pending_debt_height") == height, "Missing debt checkpoint group."
+    anchor = time_checkpoints.get_anchor(height=height)
+    if anchor is None:
+        return None
+    since = vault_type_value(vault_type_id, "last_rate_time")
+    assert since is None or anchor >= since, "Debt checkpoint precedes the rate base."
+    return rate_at(vault_type_id, anchor)
+
+
+def normalize_debt(debt: Any, rate: Any):
+    shares = debt / rate
+    return {"shares": shares, "carry": debt - shares * rate}
+
+
+def raw_live_carry_total(vault_type_id: int):
+    return vault_type_value(vault_type_id, "debt_carry_total", 0)
+
+
+def raw_vault_carry(vault_id: int):
+    return vault_value(vault_id, "debt_carry", 0)
+
+
+def adjust_type_components(vault_type_id: int, shares: Any, carry: Any):
+    # Only exact owner deltas change totals; aggregate carry is never normalized.
+    vault_types[vault_type_id, "normalized_debt_total"] = raw_live_shares_total(vault_type_id) + shares
+    vault_types[vault_type_id, "debt_carry_total"] = raw_live_carry_total(vault_type_id) + carry
+
+
+def write_vault_debt(vault_id: int, debt: Any, rate: Any):
+    parts = normalize_debt(debt, rate)
+    adjust_type_components(vault_type_id_of(vault_id), parts["shares"] - raw_vault_shares(vault_id), parts["carry"] - raw_vault_carry(vault_id))
+    vaults[vault_id, "debt_shares"] = parts["shares"]
+    vaults[vault_id, "debt_carry"] = parts["carry"]
+
+
+def allocate_group(vault_type_id: int, height: int, debt: Any, parts: dict):
+    remaining = debt_group_remaining[vault_type_id, height] - debt
+    shares = debt_group_shares[vault_type_id, height] - parts["shares"]
+    carry = remaining - shares * debt_group_rates[vault_type_id, height]
+    assert remaining >= 0 and shares >= 0, "Invalid debt checkpoint remainder."
+    # Splitting fixed-decimal multiplication can cost one quantum. Preserve each
+    # owner's exact anchor debt and record that exact component delta globally.
+    adjust_type_components(vault_type_id, 0, parts["carry"] + carry - debt_group_carry[vault_type_id, height])
+    debt_group_remaining[vault_type_id, height] = remaining
+    debt_group_shares[vault_type_id, height] = shares
+    debt_group_carry[vault_type_id, height] = carry
+    if remaining == 0:
+        assert shares == 0 and carry == 0, "Debt checkpoint components remain."
+        debt_group_rates[vault_type_id, height] = None
+        debt_group_remaining[vault_type_id, height] = None
+        debt_group_shares[vault_type_id, height] = None
+        debt_group_carry[vault_type_id, height] = None
+
+
+def group_projection(vault_type_id: int):
+    height = vault_type_value(vault_type_id, "pending_debt_height")
+    if height is None:
+        return {"shares": 0, "carry": 0, "unanchored_debt": 0}
+    debt = pending_group_debt(vault_type_id)
+    rate = group_rate(vault_type_id, height)
+    if rate is None:
+        return {"shares": 0, "carry": 0, "unanchored_debt": debt}
+    parts = normalize_debt(debt, rate)
+    return {"shares": parts["shares"], "carry": parts["carry"], "unanchored_debt": 0}
+
+
+def clear_pending_group(vault_type_id: int):
+    vault_types[vault_type_id, "pending_debt_height"] = None
+    vault_types[vault_type_id, "pending_debt_total"] = 0
+
+
+def materialize_group(vault_type_id: int):
+    height = vault_type_value(vault_type_id, "pending_debt_height")
+    if height is None:
+        return False
+    rate = group_rate(vault_type_id, height)
+    if rate is None:
+        return False
+    debt = pending_group_debt(vault_type_id)
+    assert debt > 0, "Invalid debt checkpoint conversion."
+    parts = normalize_debt(debt, rate)
+    debt_group_rates[vault_type_id, height] = rate
+    debt_group_remaining[vault_type_id, height] = debt
+    debt_group_shares[vault_type_id, height] = parts["shares"]
+    debt_group_carry[vault_type_id, height] = parts["carry"]
+    adjust_type_components(vault_type_id, parts["shares"], parts["carry"])
+    clear_pending_group(vault_type_id)
+    return True
+
+
+def materialize_fee(vault_type_id: int):
+    anchor = fee_anchor(vault_type_id)
+    if anchor is None:
+        return False
+    vault_types[vault_type_id, "stability_fee_bps"] = vault_type_value(vault_type_id, "pending_fee_bps")
+    vault_types[vault_type_id, "pending_fee_height"] = None
+    vault_types[vault_type_id, "pending_fee_bps"] = None
+    return True
+
+
+def vault_pending_debt(vault_id: int):
+    return vault_value(vault_id, "pending_debt", 0)
+
+
+def vault_pending_principal(vault_id: int):
+    return vault_value(vault_id, "pending_principal", 0)
+
+
+def raw_vault_shares(vault_id: int):
+    return vault_value(vault_id, "debt_shares", 0)
+
+
+def pending_vault_projection(vault_id: int):
+    debt = vault_pending_debt(vault_id)
+    if debt <= 0:
+        return {"shares": 0, "carry": 0, "unanchored_debt": 0}
+    vault_type_id = vault_type_id_of(vault_id)
+    height = vaults[vault_id, "pending_debt_height"]
+    rate = group_rate(vault_type_id, height)
+    if rate is None:
+        return {"shares": 0, "carry": 0, "unanchored_debt": debt}
+    shares = debt / rate
+    if debt_group_remaining[vault_type_id, height] == debt:
+        shares = debt_group_shares[vault_type_id, height]
+    return {"shares": shares, "carry": debt - shares * rate, "unanchored_debt": 0}
+
+
+def clear_vault_pending(vault_id: int):
+    vaults[vault_id, "pending_debt"] = 0
+    vaults[vault_id, "pending_principal"] = 0
+    vaults[vault_id, "pending_debt_height"] = None
+
+
+def materialize_vault(vault_id: int):
+    debt = vault_pending_debt(vault_id)
+    if debt <= 0:
+        return False
+    vault_type_id = vault_type_id_of(vault_id)
+    materialize_group(vault_type_id)
+    height = vaults[vault_id, "pending_debt_height"]
+    if debt_group_rates[vault_type_id, height] is None:
+        return False
+    parts = pending_vault_projection(vault_id)
+    allocate_group(vault_type_id, height, debt, parts)
+    shares = raw_vault_shares(vault_id) + parts["shares"]
+    carry = raw_vault_carry(vault_id) + parts["carry"]
+    vaults[vault_id, "debt_shares"] = shares
+    vaults[vault_id, "debt_carry"] = carry
+    clear_vault_pending(vault_id)
+    write_vault_debt(vault_id, shares * current_rate(vault_type_id) + carry, current_rate(vault_type_id))
+    return True
+
+
+def new_debt_height(vault_type_id: int):
+    height = time_checkpoints.request_anchor()
+    materialize_group(vault_type_id)
+    old_height = vault_type_value(vault_type_id, "pending_debt_height")
+    assert old_height is None or old_height == height, "Earlier debt checkpoint anchor is pending."
+    return height
+
+
+def add_pending_debt(vault_id: int, debt: Any, principal: Any, height: int):
+    vault_type_id = vault_type_id_of(vault_id)
+    old_height = vaults[vault_id, "pending_debt_height"]
+    assert old_height is None or old_height == height, "Earlier vault debt checkpoint anchor is pending."
+    vaults[vault_id, "pending_debt_height"] = height
+    vaults[vault_id, "pending_debt"] = vault_pending_debt(vault_id) + debt
+    vaults[vault_id, "pending_principal"] = vault_pending_principal(vault_id) + principal
+    vaults[vault_id, "principal"] = vault_live_principal(vault_id) + principal
+    vault_types[vault_type_id, "pending_debt_height"] = height
+    vault_types[vault_type_id, "pending_debt_total"] = pending_group_debt(vault_type_id) + debt
+    vault_types[vault_type_id, "principal_outstanding"] = current_live_principal_outstanding(vault_type_id) + principal
+
+
+def remove_pending_debt(vault_id: int, debt: Any, principal: Any):
+    vault_type_id = vault_type_id_of(vault_id)
+    remaining = vault_pending_debt(vault_id) - debt
+    vaults[vault_id, "pending_debt"] = remaining
+    vaults[vault_id, "pending_principal"] = vault_pending_principal(vault_id) - principal
+    vault_types[vault_type_id, "pending_debt_total"] = pending_group_debt(vault_type_id) - debt
+    if remaining == 0:
+        clear_vault_pending(vault_id)
+    if pending_group_debt(vault_type_id) == 0:
+        clear_pending_group(vault_type_id)
+
+
 def current_rate(vault_type_id: int):
-    base_rate = vault_type_value(vault_type_id, "rate_accumulator", 1)
-    fee_bps = vault_type_value(vault_type_id, "stability_fee_bps", 0)
-    if fee_bps <= 0:
-        return base_rate
-
-    elapsed = elapsed_seconds(vault_type_value(vault_type_id, "last_rate_time"))
-    if elapsed <= 0:
-        return base_rate
-
-    factor = 1 + (
-        fee_bps * elapsed / SECONDS_PER_YEAR / BPS_DENOMINATOR
-    )
-    return base_rate * factor
+    return rate_at(vault_type_id, current_time())
 
 
 def accrue_vault_type(vault_type_id: int):
+    # Resolve the bounded group before advancing its rate history; fee changes
+    # use their own immutable breakpoint and may precede the debt anchor.
     updated_rate = current_rate(vault_type_id)
+    materialize_group(vault_type_id)
+    materialize_fee(vault_type_id)
     vault_types[vault_type_id, "rate_accumulator"] = updated_rate
     vault_types[vault_type_id, "last_rate_time"] = current_time()
     return updated_rate
 
 
 def current_live_shares_total(vault_type_id: int):
-    total = vault_type_value(vault_type_id, "normalized_debt_total", 0)
-    if total is None:
-        return 0
-    return total
+    return raw_live_shares_total(vault_type_id) + group_projection(vault_type_id)["shares"]
 
 
 def current_live_principal_outstanding(vault_type_id: int):
-    total = vault_type_value(vault_type_id, "principal_outstanding", 0)
-    if total is None:
-        return 0
-    return total
+    return vault_type_value(vault_type_id, "principal_outstanding", 0)
 
 
 def current_locked_debt(vault_type_id: int):
-    total = vault_type_value(vault_type_id, "auction_debt_locked", 0)
-    if total is None:
-        return 0
-    return total
+    return vault_type_value(vault_type_id, "auction_debt_locked", 0)
 
 
 def current_locked_principal(vault_type_id: int):
-    total = vault_type_value(vault_type_id, "auction_principal_locked", 0)
-    if total is None:
-        return 0
-    return total
+    return vault_type_value(vault_type_id, "auction_principal_locked", 0)
 
 
 def current_total_debt(vault_type_id: int, rate: Any = None):
     if rate is None:
         rate = current_rate(vault_type_id)
-    return current_live_shares_total(vault_type_id) * rate + current_locked_debt(vault_type_id)
+    group = group_projection(vault_type_id)
+    return current_live_shares_total(vault_type_id) * rate + raw_live_carry_total(vault_type_id) + group["carry"] + group["unanchored_debt"] + current_locked_debt(vault_type_id)
 
 
 def require_vault_exists(vault_id: int):
@@ -387,45 +619,25 @@ def vault_owner_of(vault_id: int):
 
 
 def vault_collateral(vault_id: int):
-    amount = vaults[vault_id, "collateral_amount"]
-    if amount is None:
-        return 0
-    return amount
+    return vault_value(vault_id, "collateral_amount", 0)
 
 
 def vault_live_shares(vault_id: int):
-    shares = vaults[vault_id, "debt_shares"]
-    if shares is None:
-        return 0
-    return shares
+    return raw_vault_shares(vault_id) + pending_vault_projection(vault_id)["shares"]
 
 
 def vault_live_principal(vault_id: int):
-    principal = vaults[vault_id, "principal"]
-    if principal is None:
-        return 0
-    return principal
+    return vault_value(vault_id, "principal", 0)
 
 
 def vault_snapshot_debt(vault_id: int):
-    debt = vaults[vault_id, "auction_debt_snapshot"]
-    if debt is None:
-        return 0
-    return debt
+    return vault_value(vault_id, "auction_debt_snapshot", 0)
 
 
 def vault_snapshot_principal(vault_id: int):
-    principal = vaults[vault_id, "auction_principal_snapshot"]
-    if principal is None:
-        return 0
-    return principal
+    return vault_value(vault_id, "auction_principal_snapshot", 0)
 
 
-def vault_snapshot_shares(vault_id: int):
-    shares = vaults[vault_id, "auction_shares_snapshot"]
-    if shares is None:
-        return 0
-    return shares
 
 
 def collateral_value_amount(
@@ -442,7 +654,8 @@ def collateral_value(vault_id: int):
 def vault_live_debt(vault_id: int, rate: Any = None):
     if rate is None:
         rate = current_rate(vault_type_id_of(vault_id))
-    return vault_live_shares(vault_id) * rate
+    group = pending_vault_projection(vault_id)
+    return vault_live_shares(vault_id) * rate + raw_vault_carry(vault_id) + group["carry"] + group["unanchored_debt"]
 
 
 def vault_total_debt(vault_id: int, rate: Any = None):
@@ -536,87 +749,53 @@ def burn_principal(amount: Any):
     stable_token().burn(amount=amount)
 
 
+def repayment_parts(debt: Any, principal: Any, amount: Any):
+    amount = min(amount, debt)
+    fee_paid = min(amount, max(0, debt - principal))
+    principal_paid = min(principal, amount - fee_paid)
+    return {"total_paid": amount, "fee_paid": fee_paid, "principal_paid": principal_paid}
+
+
 def apply_live_repayment(vault_id: int, amount: Any, rate: Any = None):
     if rate is None:
         rate = current_rate(vault_type_id_of(vault_id))
-
+    materialize_vault(vault_id)
     debt = vault_live_debt(vault_id, rate)
-    if amount > debt:
-        amount = debt
-
     principal_due = vault_live_principal(vault_id)
-    fee_due = debt - principal_due
-    if fee_due < 0:
-        fee_due = 0
-
-    fee_paid = amount
-    if fee_paid > fee_due:
-        fee_paid = fee_due
-
-    principal_paid = amount - fee_paid
-    if principal_paid > principal_due:
-        principal_paid = principal_due
-
-    shares_paid = 0
-    if amount > 0:
-        shares_paid = amount / rate
-
-    new_shares = vault_live_shares(vault_id) - shares_paid
-    if is_zeroish(new_shares):
-        new_shares = 0
-
-    new_principal = principal_due - principal_paid
-    if is_zeroish(new_principal):
-        new_principal = 0
-
-    vaults[vault_id, "debt_shares"] = new_shares
-    vaults[vault_id, "principal"] = new_principal
-
-    vault_types[vault_type_id_of(vault_id), "normalized_debt_total"] = (
-        current_live_shares_total(vault_type_id_of(vault_id)) - shares_paid
-    )
-    vault_types[vault_type_id_of(vault_id), "principal_outstanding"] = (
-        current_live_principal_outstanding(vault_type_id_of(vault_id))
-        - principal_paid
-    )
-
+    parts = repayment_parts(debt, principal_due, amount)
+    amount = parts["total_paid"]
+    fee_paid = parts["fee_paid"]
+    principal_paid = parts["principal_paid"]
+    pending_fees = max(0, vault_pending_debt(vault_id) - vault_pending_principal(vault_id))
+    pending_fee_paid = min(fee_paid, pending_fees)
+    pending_principal_paid = min(principal_paid, vault_pending_principal(vault_id))
+    pending_paid = pending_fee_paid + pending_principal_paid
+    active_paid = amount - pending_paid
+    active_debt = raw_vault_shares(vault_id) * rate + raw_vault_carry(vault_id)
+    if pending_paid > 0:
+        remove_pending_debt(vault_id, pending_paid, pending_principal_paid)
+    write_vault_debt(vault_id, active_debt - active_paid, rate)
+    vaults[vault_id, "principal"] = principal_due - principal_paid
+    vault_type_id = vault_type_id_of(vault_id)
+    vault_types[vault_type_id, "principal_outstanding"] = current_live_principal_outstanding(vault_type_id) - principal_paid
     if fee_paid > 0:
-        route_fee_income(vault_type_id_of(vault_id), fee_paid)
+        route_fee_income(vault_type_id, fee_paid)
     if principal_paid > 0:
         burn_principal(principal_paid)
-
-    return {
-        "total_paid": amount,
-        "fee_paid": fee_paid,
-        "principal_paid": principal_paid,
-    }
+    return {"total_paid": amount, "fee_paid": fee_paid, "principal_paid": principal_paid}
 
 
 def apply_auction_repayment(vault_id: int, amount: Any):
     debt = vault_snapshot_debt(vault_id)
-    if amount > debt:
-        amount = debt
-
     principal_due = vault_snapshot_principal(vault_id)
-    fee_due = debt - principal_due
-    if fee_due < 0:
-        fee_due = 0
-
-    fee_paid = amount
-    if fee_paid > fee_due:
-        fee_paid = fee_due
-
-    principal_paid = amount - fee_paid
-    if principal_paid > principal_due:
-        principal_paid = principal_due
+    parts = repayment_parts(debt, principal_due, amount)
+    amount = parts["total_paid"]
+    fee_paid = parts["fee_paid"]
+    principal_paid = parts["principal_paid"]
 
     new_debt = debt - amount
-    if is_zeroish(new_debt):
-        new_debt = 0
 
     new_principal = principal_due - principal_paid
-    if is_zeroish(new_principal):
-        new_principal = 0
 
     vaults[vault_id, "auction_debt_snapshot"] = new_debt
     vaults[vault_id, "auction_principal_snapshot"] = new_principal
@@ -640,22 +819,67 @@ def apply_auction_repayment(vault_id: int, amount: Any):
     }
 
 
+
+def auction_clock(vault_id: int):
+    opened = vaults[vault_id, "auction_opened_at"]
+    end_time = vaults[vault_id, "auction_end_time"]
+    height = vaults[vault_id, "auction_anchor_height"]
+    if opened is None and height is not None:
+        opened = time_checkpoints.get_anchor(height=height)
+        if opened is not None:
+            end_time = opened + datetime.timedelta(seconds=vaults[vault_id, "auction_duration_seconds"])
+    extension_height = vaults[vault_id, "auction_extension_height"]
+    if extension_height is not None:
+        anchor = time_checkpoints.get_anchor(height=extension_height)
+        if anchor is None:
+            return {"opened": opened, "end": None}
+        end_time = max(end_time, anchor + datetime.timedelta(seconds=vaults[vault_id, "auction_extension_seconds"]))
+    return {"opened": opened, "end": end_time}
+
+
+def materialize_auction_clock(vault_id: int):
+    window = auction_clock(vault_id)
+    if window["end"] is None:
+        return None
+    vaults[vault_id, "auction_opened_at"] = window["opened"]
+    vaults[vault_id, "auction_end_time"] = window["end"]
+    vaults[vault_id, "auction_extension_height"] = None
+    vaults[vault_id, "auction_extension_seconds"] = 0
+    return window["end"]
+
+
+def begin_auction_clock(vault_id: int):
+    height = time_checkpoints.request_anchor()
+    vaults[vault_id, "auction_anchor_height"] = height
+    vaults[vault_id, "auction_duration_seconds"] = vault_type_value(vault_type_id_of(vault_id), "auction_duration_seconds")
+    vaults[vault_id, "auction_opened_at"] = None
+    vaults[vault_id, "auction_end_time"] = None
+    vaults[vault_id, "auction_extension_height"] = None
+    vaults[vault_id, "auction_extension_seconds"] = 0
+    return None
+
+
 def clear_auction(vault_id: int):
     vaults[vault_id, "auction_open"] = False
+    vaults[vault_id, "auction_extension_height"] = None
+    vaults[vault_id, "auction_extension_seconds"] = 0
+    vaults[vault_id, "auction_anchor_height"] = None
+    vaults[vault_id, "auction_duration_seconds"] = None
     vaults[vault_id, "auction_opened_at"] = None
     vaults[vault_id, "auction_end_time"] = None
     vaults[vault_id, "auction_highest_bidder"] = ""
     vaults[vault_id, "auction_highest_bid"] = 0
     vaults[vault_id, "auction_debt_snapshot"] = 0
     vaults[vault_id, "auction_principal_snapshot"] = 0
-    vaults[vault_id, "auction_shares_snapshot"] = 0
 
 
 def close_vault_record(vault_id: int):
     vaults[vault_id, "open"] = False
     vaults[vault_id, "debt_shares"] = 0
+    vaults[vault_id, "debt_carry"] = 0
     vaults[vault_id, "principal"] = 0
     vaults[vault_id, "closed_at"] = current_time()
+    clear_vault_pending(vault_id)
     clear_auction(vault_id)
 
 
@@ -676,15 +900,12 @@ def restore_auction_to_live(vault_id: int):
         clear_auction(vault_id)
         return
 
-    restored_shares = remaining_debt / rate
-    vaults[vault_id, "debt_shares"] = restored_shares
-    vaults[vault_id, "principal"] = remaining_principal
-    vault_types[vault_type_id, "normalized_debt_total"] = (
-        current_live_shares_total(vault_type_id) + restored_shares
-    )
-    vault_types[vault_type_id, "principal_outstanding"] = (
-        current_live_principal_outstanding(vault_type_id) + remaining_principal
-    )
+    height = new_debt_height(vault_type_id)
+    vaults[vault_id, "debt_shares"] = 0
+    vaults[vault_id, "debt_carry"] = 0
+    vaults[vault_id, "principal"] = 0
+    clear_vault_pending(vault_id)
+    add_pending_debt(vault_id, remaining_debt, remaining_principal, height)
     clear_auction(vault_id)
 
 
@@ -916,6 +1137,7 @@ def add_vault_type(
     vault_types[vault_type_id, "rate_accumulator"] = 1
     vault_types[vault_type_id, "last_rate_time"] = current_time()
     vault_types[vault_type_id, "normalized_debt_total"] = 0
+    vault_types[vault_type_id, "debt_carry_total"] = 0
     vault_types[vault_type_id, "principal_outstanding"] = 0
     vault_types[vault_type_id, "auction_debt_locked"] = 0
     vault_types[vault_type_id, "auction_principal_locked"] = 0
@@ -946,7 +1168,11 @@ def set_vault_type_fee(vault_type_id: int, stability_fee_bps: int):
     require_vault_type_exists(vault_type_id)
     assert stability_fee_bps >= 0, "stability_fee_bps must be non-negative."
     accrue_vault_type(vault_type_id)
-    vault_types[vault_type_id, "stability_fee_bps"] = stability_fee_bps
+    height = time_checkpoints.request_anchor()
+    previous = vault_type_value(vault_type_id, "pending_fee_height")
+    assert previous is None or previous == height, "Earlier fee checkpoint anchor is pending."
+    vault_types[vault_type_id, "pending_fee_height"] = height
+    vault_types[vault_type_id, "pending_fee_bps"] = stability_fee_bps
 
 
 @export
@@ -1022,6 +1248,7 @@ def create_vault(vault_type_id: int, collateral_amount: Any, debt_amount: Any):
     assert debt_amount >= vault_type_value(vault_type_id, "min_debt", 0), "debt_amount is below min_debt."
 
     rate = accrue_vault_type(vault_type_id)
+    height = new_debt_height(vault_type_id)
     assert current_total_debt(vault_type_id, rate) + debt_amount <= vault_type_value(vault_type_id, "debt_ceiling"), "debt ceiling exceeded."
     assert collateralization_bps_for(vault_type_id, collateral_amount, debt_amount) >= required_min_ratio(vault_type_id), "Not enough collateral."
 
@@ -1033,20 +1260,17 @@ def create_vault(vault_type_id: int, collateral_amount: Any, debt_amount: Any):
     vaults[vault_id, "owner"] = ctx.caller
     vaults[vault_id, "vault_type_id"] = vault_type_id
     vaults[vault_id, "collateral_amount"] = collateral_amount
-    vaults[vault_id, "debt_shares"] = debt_amount / rate
-    vaults[vault_id, "principal"] = debt_amount
+    vaults[vault_id, "debt_shares"] = 0
+    vaults[vault_id, "debt_carry"] = 0
+    vaults[vault_id, "principal"] = 0
+    clear_vault_pending(vault_id)
     vaults[vault_id, "open"] = True
     vaults[vault_id, "created_at"] = current_time()
     clear_auction(vault_id)
     vaults[vault_id, "auction_settled"] = False
     vaults[vault_id, "auction_settled_at"] = None
 
-    vault_types[vault_type_id, "normalized_debt_total"] = (
-        current_live_shares_total(vault_type_id) + vaults[vault_id, "debt_shares"]
-    )
-    vault_types[vault_type_id, "principal_outstanding"] = (
-        current_live_principal_outstanding(vault_type_id) + debt_amount
-    )
+    add_pending_debt(vault_id, debt_amount, debt_amount, height)
 
     stable_token().mint(amount=debt_amount, to=ctx.caller)
 
@@ -1125,6 +1349,8 @@ def borrow(vault_id: int, amount: Any):
 
     vault_type_id = vault_type_id_of(vault_id)
     rate = accrue_vault_type(vault_type_id)
+    materialize_vault(vault_id)
+    height = new_debt_height(vault_type_id)
     assert current_total_debt(vault_type_id, rate) + amount <= vault_type_value(vault_type_id, "debt_ceiling"), "debt ceiling exceeded."
 
     new_principal = vault_live_principal(vault_id) + amount
@@ -1132,15 +1358,7 @@ def borrow(vault_id: int, amount: Any):
     assert new_debt >= vault_type_value(vault_type_id, "min_debt", 0), "debt would be below min_debt."
     assert collateralization_bps_for(vault_type_id, vault_collateral(vault_id), new_debt) >= required_min_ratio(vault_type_id), "Borrow would undercollateralize the vault."
 
-    shares_added = amount / rate
-    vaults[vault_id, "debt_shares"] = vault_live_shares(vault_id) + shares_added
-    vaults[vault_id, "principal"] = new_principal
-    vault_types[vault_type_id, "normalized_debt_total"] = (
-        current_live_shares_total(vault_type_id) + shares_added
-    )
-    vault_types[vault_type_id, "principal_outstanding"] = (
-        current_live_principal_outstanding(vault_type_id) + amount
-    )
+    add_pending_debt(vault_id, amount, amount, height)
 
     stable_token().mint(amount=amount, to=ctx.caller)
 
@@ -1171,7 +1389,7 @@ def repay(vault_id: int, amount: Any):
     repayment = apply_live_repayment(vault_id, amount, rate)
 
     remaining_debt = vault_live_debt(vault_id, rate)
-    assert is_zeroish(remaining_debt) or remaining_debt >= vault_type_value(vault_type_id_of(vault_id), "min_debt", 0), "remaining debt would fall below min_debt."
+    assert remaining_debt == 0 or remaining_debt >= vault_type_value(vault_type_id_of(vault_id), "min_debt", 0), "remaining debt would fall below min_debt."
 
     DebtChangedEvent(
         {
@@ -1232,6 +1450,7 @@ def liquidate(vault_id: int, repay_amount: Any = None):
 
     vault_type_id = vault_type_id_of(vault_id)
     rate = accrue_vault_type(vault_type_id)
+    materialize_vault(vault_id)
     debt = vault_live_debt(vault_id, rate)
     assert debt > 0, "Vault has no debt."
     assert collateralization_bps_for(vault_type_id, vault_collateral(vault_id), debt) < required_liquidation_ratio(vault_type_id), "Vault is above liquidation threshold."
@@ -1259,7 +1478,7 @@ def liquidate(vault_id: int, repay_amount: Any = None):
     collateral_contract(vault_type_id).transfer(amount=collateral_paid, to=ctx.caller)
 
     remaining_debt = vault_live_debt(vault_id, rate)
-    if is_zeroish(remaining_debt):
+    if remaining_debt == 0:
         remaining_collateral = vault_collateral(vault_id)
         vaults[vault_id, "collateral_amount"] = 0
         close_vault_record(vault_id)
@@ -1297,18 +1516,19 @@ def open_liquidation_auction(vault_id: int):
 
     vault_type_id = vault_type_id_of(vault_id)
     rate = accrue_vault_type(vault_type_id)
+    materialize_vault(vault_id)
     debt = vault_live_debt(vault_id, rate)
     assert debt > 0, "Vault has no debt."
     assert collateralization_bps_for(vault_type_id, vault_collateral(vault_id), debt) < required_liquidation_ratio(vault_type_id), "Vault is above liquidation threshold."
 
     principal = vault_live_principal(vault_id)
-    shares = vault_live_shares(vault_id)
-    duration = vault_type_value(vault_type_id, "auction_duration_seconds")
-    end_time = current_time() + datetime.timedelta(seconds=duration)
+    shares = raw_vault_shares(vault_id)
+    pending_debt = vault_pending_debt(vault_id)
+    if pending_debt > 0:
+        remove_pending_debt(vault_id, pending_debt, vault_pending_principal(vault_id))
+    end_time = begin_auction_clock(vault_id)
 
-    vault_types[vault_type_id, "normalized_debt_total"] = (
-        current_live_shares_total(vault_type_id) - shares
-    )
+    adjust_type_components(vault_type_id, -shares, -raw_vault_carry(vault_id))
     vault_types[vault_type_id, "principal_outstanding"] = (
         current_live_principal_outstanding(vault_type_id) - principal
     )
@@ -1320,15 +1540,13 @@ def open_liquidation_auction(vault_id: int):
     )
 
     vaults[vault_id, "debt_shares"] = 0
+    vaults[vault_id, "debt_carry"] = 0
     vaults[vault_id, "principal"] = 0
     vaults[vault_id, "auction_open"] = True
-    vaults[vault_id, "auction_opened_at"] = current_time()
-    vaults[vault_id, "auction_end_time"] = end_time
     vaults[vault_id, "auction_highest_bidder"] = ""
     vaults[vault_id, "auction_highest_bid"] = 0
     vaults[vault_id, "auction_debt_snapshot"] = debt
     vaults[vault_id, "auction_principal_snapshot"] = principal
-    vaults[vault_id, "auction_shares_snapshot"] = shares
 
     AuctionOpenedEvent(
         {
@@ -1346,30 +1564,44 @@ def restart_auction(vault_id: int):
     assert_not_paused()
     require_open_vault(vault_id)
     assert vaults[vault_id, "auction_open"] is True, "Auction is not open."
-    assert current_time() >= vaults[vault_id, "auction_end_time"], "Auction is still open."
+    previous_end = materialize_auction_clock(vault_id)
+    assert previous_end is not None, "Auction checkpoint anchor is pending."
+    assert current_time() >= previous_end, "Auction is still open."
     assert vaults[vault_id, "auction_highest_bid"] <= 0, "Auction already has bids."
-
-    duration = vault_type_value(vault_type_id_of(vault_id), "auction_duration_seconds")
-    end_time = current_time() + datetime.timedelta(seconds=duration)
-    vaults[vault_id, "auction_opened_at"] = current_time()
-    vaults[vault_id, "auction_end_time"] = end_time
-
-    AuctionRestartedEvent(
-        {
-            "vault_id": vault_id,
-            "owner": vault_owner_of(vault_id),
-            "debt": vault_snapshot_debt(vault_id),
-            "end_time": str(end_time),
-        }
-    )
+    end_time = begin_auction_clock(vault_id)
+    AuctionRestartedEvent({"vault_id": vault_id, "owner": vault_owner_of(vault_id),
+        "debt": vault_snapshot_debt(vault_id), "end_time": "pending"})
     return end_time
+
+
+
+def maybe_extend_auction(vault_id: int):
+    nominal_end = vaults[vault_id, "auction_end_time"]
+    if nominal_end is None:
+        return
+    vault_type_id = vault_type_id_of(vault_id)
+    window = vault_type_value(vault_type_id, "extension_window_seconds", 0)
+    extension = vault_type_value(vault_type_id, "bid_extension_seconds", 0)
+    if window <= 0 or extension <= 0 or seconds_until(nominal_end) > window:
+        return
+    height = time_checkpoints.request_anchor()
+    previous = vaults[vault_id, "auction_extension_height"]
+    assert previous is None or previous == height, "Earlier auction extension checkpoint is pending."
+    captured = vault_value(vault_id, "auction_extension_seconds", 0)
+    # Preserve each qualifying additive extension, even when governance changes
+    # its duration between same-height bids. The successor supplies a lower bound
+    # for the whole newly promised interval, never an earlier deadline.
+    vaults[vault_id, "auction_end_time"] = nominal_end + datetime.timedelta(seconds=extension)
+    vaults[vault_id, "auction_extension_height"] = height
+    vaults[vault_id, "auction_extension_seconds"] = captured + extension
 
 
 @export
 def bid(vault_id: int, bid_amount: Any):
     require_open_vault(vault_id)
     assert vaults[vault_id, "auction_open"] is True, "Auction is not open."
-    assert current_time() < vaults[vault_id, "auction_end_time"], "Auction already ended."
+    end_time = materialize_auction_clock(vault_id)
+    assert end_time is None or current_time() < end_time, "Auction already ended."
     assert isinstance(bid_amount, (int, decimal)), "bid_amount must be numeric."
     assert bid_amount > 0, "bid_amount must be positive."
 
@@ -1388,22 +1620,7 @@ def bid(vault_id: int, bid_amount: Any):
     vaults[vault_id, "auction_highest_bidder"] = ctx.caller
     vaults[vault_id, "auction_highest_bid"] = bid_amount
 
-    extension_window_seconds = vault_type_value(
-        vault_type_id_of(vault_id), "extension_window_seconds", 0
-    )
-    bid_extension_seconds = vault_type_value(
-        vault_type_id_of(vault_id), "bid_extension_seconds", 0
-    )
-    if (
-        extension_window_seconds > 0
-        and bid_extension_seconds > 0
-        and seconds_until(vaults[vault_id, "auction_end_time"])
-        <= extension_window_seconds
-    ):
-        vaults[vault_id, "auction_end_time"] = (
-            vaults[vault_id, "auction_end_time"]
-            + datetime.timedelta(seconds=bid_extension_seconds)
-        )
+    maybe_extend_auction(vault_id)
 
     AuctionBidPlacedEvent(
         {
@@ -1427,6 +1644,7 @@ def cure_auction(vault_id: int, repay_amount: Any = 0):
 
     assert isinstance(repay_amount, (int, decimal)), "repay_amount must be numeric."
     assert repay_amount >= 0, "repay_amount must be non-negative."
+    assert repay_amount <= vault_snapshot_debt(vault_id), "repay_amount exceeds total debt."
 
     if repay_amount > 0:
         stable_token().transfer_from(
@@ -1491,7 +1709,9 @@ def cancel_auction_if_safe(vault_id: int):
 def settle_auction(vault_id: int):
     require_open_vault(vault_id)
     assert vaults[vault_id, "auction_open"] is True, "Auction is not open."
-    assert current_time() >= vaults[vault_id, "auction_end_time"], "Auction is still open."
+    end_time = materialize_auction_clock(vault_id)
+    assert end_time is not None, "Auction checkpoint anchor is pending."
+    assert current_time() >= end_time, "Auction is still open."
 
     winner = vaults[vault_id, "auction_highest_bidder"]
     winning_bid = vaults[vault_id, "auction_highest_bid"]
@@ -1502,17 +1722,9 @@ def settle_auction(vault_id: int):
     debt = vault_snapshot_debt(vault_id)
     principal = vault_snapshot_principal(vault_id)
     collateral_amount = vault_collateral(vault_id)
-    fee_due = debt - principal
-    if fee_due < 0:
-        fee_due = 0
-
-    fee_paid = winning_bid
-    if fee_paid > fee_due:
-        fee_paid = fee_due
-
-    principal_paid = winning_bid - fee_paid
-    if principal_paid > principal:
-        principal_paid = principal
+    parts = repayment_parts(debt, principal, winning_bid)
+    fee_paid = parts["fee_paid"]
+    principal_paid = parts["principal_paid"]
 
     excess = winning_bid - fee_paid - principal_paid
     bad_debt = debt - winning_bid
@@ -1684,6 +1896,10 @@ def get_vault(vault_id: int):
         "vault_type_id": vault_type_id_of(vault_id),
         "collateral_amount": vault_collateral(vault_id),
         "debt_shares": vault_live_shares(vault_id),
+        "debt_carry": raw_vault_carry(vault_id) + pending_vault_projection(vault_id)["carry"],
+        "pending_debt": vault_pending_debt(vault_id),
+        "pending_principal": vault_pending_principal(vault_id),
+        "pending_debt_height": vaults[vault_id, "pending_debt_height"],
         "principal": vault_total_principal(vault_id),
         "fee_due": vault_fee_due(vault_id),
         "debt": debt,
@@ -1700,8 +1916,10 @@ def get_auction(vault_id: int):
     require_vault_exists(vault_id)
     return {
         "auction_open": vaults[vault_id, "auction_open"] is True,
-        "auction_opened_at": vaults[vault_id, "auction_opened_at"],
-        "auction_end_time": vaults[vault_id, "auction_end_time"],
+        "auction_opened_at": auction_clock(vault_id)["opened"],
+        "auction_end_time": auction_clock(vault_id)["end"],
+        "auction_anchor_height": vaults[vault_id, "auction_anchor_height"],
+        "extension_anchor_height": vaults[vault_id, "auction_extension_height"],
         "highest_bidder": vaults[vault_id, "auction_highest_bidder"],
         "highest_bid": vaults[vault_id, "auction_highest_bid"],
         "min_next_bid": min_next_bid(vault_id),
@@ -1724,7 +1942,7 @@ def get_vault_type(vault_type_id: int):
         "partial_liquidation_target_ratio_bps": vault_type_value(vault_type_id, "partial_liquidation_target_ratio_bps"),
         "debt_ceiling": vault_type_value(vault_type_id, "debt_ceiling"),
         "min_debt": vault_type_value(vault_type_id, "min_debt"),
-        "stability_fee_bps": vault_type_value(vault_type_id, "stability_fee_bps"),
+        "stability_fee_bps": effective_fee(vault_type_id),
         "auction_duration_seconds": vault_type_value(vault_type_id, "auction_duration_seconds"),
         "min_bid_increment_bps": vault_type_value(vault_type_id, "min_bid_increment_bps"),
         "extension_window_seconds": vault_type_value(vault_type_id, "extension_window_seconds"),
@@ -1732,8 +1950,13 @@ def get_vault_type(vault_type_id: int):
         "surplus_buffer_bps": vault_type_value(vault_type_id, "surplus_buffer_bps"),
         "rate_accumulator": rate,
         "live_normalized_debt_total": current_live_shares_total(vault_type_id),
+        "live_debt_carry_total": raw_live_carry_total(vault_type_id) + group_projection(vault_type_id)["carry"],
         "live_principal_outstanding": current_live_principal_outstanding(vault_type_id),
-        "live_debt_outstanding": current_live_shares_total(vault_type_id) * rate,
+        "live_debt_outstanding": current_total_debt(vault_type_id, rate) - current_locked_debt(vault_type_id),
+        "pending_debt_outstanding": pending_group_debt(vault_type_id),
+        "pending_debt_height": vault_type_value(vault_type_id, "pending_debt_height"),
+        "pending_stability_fee_bps": vault_type_value(vault_type_id, "pending_fee_bps"),
+        "pending_fee_height": vault_type_value(vault_type_id, "pending_fee_height"),
         "auction_debt_locked": current_locked_debt(vault_type_id),
         "auction_principal_locked": current_locked_principal(vault_type_id),
         "fees_distributed": vault_type_value(vault_type_id, "fees_distributed", 0),

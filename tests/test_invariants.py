@@ -61,6 +61,13 @@ def _assert_vault_accounting(protocol, vault_ids: list[int]) -> None:
     assert float(vault_type["live_debt_outstanding"]) == pytest.approx(live_debt)
 
 
+def _try_vault_change(method, vault_id, amount, owner):
+    try:
+        method(vault_id=vault_id, amount=amount, signer=owner)
+    except AssertionError:
+        pass
+
+
 def test_psm_deterministic_operation_sequence_preserves_accounting(protocol):
     rng = Random(1729)
     expected_total_reserve = sum(
@@ -97,6 +104,8 @@ def test_psm_deterministic_operation_sequence_preserves_accounting(protocol):
 def test_vault_deterministic_operation_sequence_preserves_accounting(protocol):
     rng = Random(2718)
     vault_ids: list[int] = []
+    when = Datetime(year=2026, month=1, day=1)
+    protocol.step(10, when)
 
     for owner in ("alice", "bob", "carol"):
         protocol.stable_token.approve(amount=10_000, to="con_vaults", signer=owner)
@@ -110,6 +119,7 @@ def test_vault_deterministic_operation_sequence_preserves_accounting(protocol):
         )
 
     for index in range(45):
+        protocol.step(11 + index, when)
         vault_id = vault_ids[index % len(vault_ids)]
         vault = protocol.vaults.get_vault(vault_id=vault_id)
         owner = vault["owner"]
@@ -123,23 +133,9 @@ def test_vault_deterministic_operation_sequence_preserves_accounting(protocol):
             )
         elif action == "withdraw":
             withdraw_amount = rng.randint(1, 6)
-            try:
-                protocol.vaults.withdraw_collateral(
-                    vault_id=vault_id,
-                    amount=withdraw_amount,
-                    signer=owner,
-                )
-            except AssertionError:
-                pass
+            _try_vault_change(protocol.vaults.withdraw_collateral, vault_id, withdraw_amount, owner)
         elif action == "borrow":
-            try:
-                protocol.vaults.borrow(
-                    vault_id=vault_id,
-                    amount=rng.randint(1, 8),
-                    signer=owner,
-                )
-            except AssertionError:
-                pass
+            _try_vault_change(protocol.vaults.borrow, vault_id, rng.randint(1, 8), owner)
         else:
             principal = float(vault["principal"])
             if principal > 12 and _balance(protocol.stable_token, owner) > 1:
@@ -169,8 +165,7 @@ def test_fee_accrual_routes_and_accounts_for_every_minted_token(
     elapsed_seconds,
 ):
     principal = 100
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    end = {"now": end_time}
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
     saved = protocol.seed_saver()
     vault_id = protocol.vaults.create_vault(
         vault_type_id=protocol.vault_type_id,
@@ -179,6 +174,7 @@ def test_fee_accrual_routes_and_accounts_for_every_minted_token(
         signer="alice",
         environment=start,
     )
+    protocol.step(11, start["now"])
     expected_fee = principal * 500 / 10_000 * elapsed_seconds / (365 * 86_400)
 
     # Six tokens cover the largest fee in these scenarios (five tokens).
@@ -188,6 +184,7 @@ def test_fee_accrual_routes_and_accounts_for_every_minted_token(
         to="con_vaults",
         signer="alice",
     )
+    end = protocol.step(1000, end_time)
     protocol.vaults.close_vault(
         vault_id=vault_id,
         signer="alice",
@@ -210,8 +207,7 @@ def test_auction_settlement_fuzz_preserves_debt_and_supply_accounting(
     rng = Random(seed)
     # Opening bids must cover the reserve: 100 COL at 0.5 less the 5% bonus.
     winning_bid = rng.randint(48, 150)
-    start = {"now": Datetime(year=2026, month=1, day=1)}
-    end = {"now": Datetime(year=2026, month=1, day=2, second=1)}
+    start = protocol.step(10, Datetime(year=2026, month=1, day=1))
 
     vault_id = protocol.vaults.create_vault(
         vault_type_id=protocol.vault_type_id,
@@ -238,8 +234,10 @@ def test_auction_settlement_fuzz_preserves_debt_and_supply_accounting(
         signer="bob",
         environment=start,
     )
+    protocol.step(11, start["now"])
     supply_before_settlement = float(protocol.stable_token.total_supply_of())
 
+    end = protocol.step(1000, Datetime(year=2026, month=1, day=2, second=1))
     settlement = protocol.vaults.settle_auction(
         vault_id=vault_id,
         signer="carol",

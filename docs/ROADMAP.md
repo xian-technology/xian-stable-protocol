@@ -6,7 +6,10 @@
 - run the invariant and seeded-fuzz suite against a live `xian-abci` node and
   expand it into long-running stateful campaigns
 - add integration tests against a live `xian-abci` node
-- add a stronger oracle sourcing and attestation model on top of reporter quorum
+- design and accept a stronger oracle freshness/attestation protocol before
+  production use: consensus header age alone cannot establish external price
+  freshness after a halt; successor debt/auction clocks do not solve this
+- validate that oracle protocol on the actual node before enabling meaningful TVL
 - add keeper automation and operational runbooks for auctions and oracle reporting
 - design a cross-vault collateral redemption path if the protocol wants one
 
