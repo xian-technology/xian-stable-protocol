@@ -33,6 +33,13 @@ jobs:
             git -C xian-contracting checkout -B "$BRANCH" FETCH_HEAD
           fi
 
+      - name: Check out xian-configs
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository_owner }}/xian-configs
+          ref: main
+          path: xian-configs
+
       - name: Check out xian-cli
         uses: actions/checkout@v7
         with:

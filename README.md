@@ -245,6 +245,12 @@ The tests cover:
 The protocol tests use the sibling `xian-contracting` checkout configured in
 `tool.uv.sources`. The standard local client runs the contracts on the V2 VM.
 
+The tests also load the canonical `contracts/time_checkpoints.s.py` source from
+the sibling `xian-configs` checkout. Clone `xian-configs` beside this repository
+before running the suite, as CI does. Set `XIAN_CONFIGS_DIR` when using a
+specific configs checkout in another location. The fixtures execute that real
+chain service to verify successor-time behavior.
+
 The optional `deploy` dependency group resolves `xian-py` from the
 sibling workspace checkout so the bootstrap script exercises the same
 SDK revision the rest of the Xian stack is using.
