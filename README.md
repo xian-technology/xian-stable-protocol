@@ -30,6 +30,12 @@ Strong reference implementation with a real Xian-stack bootstrap path.
 **Not** a fully automated production protocol. The main remaining
 hardening work is tracked in [docs/ROADMAP.md](docs/ROADMAP.md).
 
+Production requires accepting, implementing and validating a stronger oracle
+protocol. The proposed
+[Oracle Authorization V2 acceptance gates](https://github.com/xian-technology/xian-meta/blob/main/docs/ORACLE_AUTHORIZATION_V2.md#acceptance-gates)
+are design requirements, not an implemented, enabled or production-approved
+feature. Existing baseline tests do not validate that proposal.
+
 ## Quick Start
 
 ```bash
