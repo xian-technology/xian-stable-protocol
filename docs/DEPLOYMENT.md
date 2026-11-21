@@ -19,7 +19,7 @@ The Xian stack integration is split cleanly:
 From the `xian-cli` checkout:
 
 ```bash
-uv run xian network create stable-protocol-local --template single-node-indexed --chain-id stable-protocol-local-1 --generate-validator-key --init-node
+uv run xian network create stable-protocol-local --template single-node-dev --chain-id stable-protocol-local-1 --generate-validator-key --init-node
 uv run xian node start validator-1
 uv run xian node endpoints validator-1
 ```
