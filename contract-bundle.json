@@ -38,7 +38,7 @@
       "name": "con_vaults",
       "role": "vaults",
       "path": "contracts/con_vaults.s.py",
-      "sha256": "a113b67282559f46669a409348e870f0538d230183892d92e1b0bea9944366c4",
+      "sha256": "abec14e267934f7aa34f08d8dbc963fd0cbe85bbfb9d828971b5e5116e6d160a",
       "deploy_order": 40,
       "default_chi": 100000
     },

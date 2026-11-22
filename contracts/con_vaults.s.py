@@ -885,7 +885,7 @@ def close_vault_record(vault_id: int):
 
 def restore_auction_to_live(vault_id: int):
     vault_type_id = vault_type_id_of(vault_id)
-    rate = accrue_vault_type(vault_type_id)
+    accrue_vault_type(vault_type_id)
     remaining_debt = vault_snapshot_debt(vault_id)
     remaining_principal = vault_snapshot_principal(vault_id)
 
