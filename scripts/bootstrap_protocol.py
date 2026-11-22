@@ -273,27 +273,27 @@ def _validate_config(
     *,
     skip_sample_tokens: bool,
 ) -> None:
-    for label, name in (
+    deployment_names = (
         ("XIAN_STABLE_TOKEN_CONTRACT", config.stable_token_contract_name),
         ("XIAN_STABLE_ORACLE_CONTRACT", config.oracle_contract_name),
         ("XIAN_STABLE_SAVINGS_CONTRACT", config.savings_contract_name),
         ("XIAN_STABLE_VAULTS_CONTRACT", config.vaults_contract_name),
         ("XIAN_STABLE_PSM_CONTRACT", config.psm_contract_name),
-    ):
-        _require_user_contract_name(label, name)
+    )
+    asset_names = (
+        ("XIAN_STABLE_COLLATERAL_CONTRACT", config.collateral_contract_name),
+        ("XIAN_STABLE_RESERVE_CONTRACT", config.reserve_contract_name),
+    )
+    used_contract_names = {config.membership_contract_name, config.governance_contract_name}
     if skip_sample_tokens:
-        return
-    for label, name in (
-        (
-            "XIAN_STABLE_COLLATERAL_CONTRACT",
-            config.collateral_contract_name,
-        ),
-        (
-            "XIAN_STABLE_RESERVE_CONTRACT",
-            config.reserve_contract_name,
-        ),
-    ):
+        used_contract_names.update(name for _, name in asset_names)
+    else:
+        deployment_names += asset_names
+    for label, name in deployment_names:
         _require_user_contract_name(label, name)
+        if name in used_contract_names:
+            raise RuntimeError(f"{label} names a duplicate contract: {name!r}")
+        used_contract_names.add(name)
 
 
 def _deploy_contract(

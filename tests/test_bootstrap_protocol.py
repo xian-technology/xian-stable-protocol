@@ -160,6 +160,41 @@ def test_invalid_bundle_fails_before_client_creation(bundle_copy, monkeypatch, d
         bootstrap.main(["--bundle", str(bundle_copy)])
 
 
+@pytest.mark.parametrize(
+    ("variable", "name", "args"),
+    [
+        ("XIAN_STABLE_SAVINGS_CONTRACT", "con_vaults", []),
+        ("XIAN_STABLE_RESERVE_CONTRACT", "con_psm", []),
+        ("XIAN_STABLE_COLLATERAL_CONTRACT", "con_stable_token", ["--skip-sample-tokens"]),
+        ("XIAN_STABLE_RESERVE_CONTRACT", "con_collateral_token", []),
+    ],
+)
+def test_colliding_deployment_names_fail_before_connecting(monkeypatch, variable, name, args):
+    bootstrap = _load_bootstrap_module()
+    monkeypatch.setattr(bootstrap, "_require_wallet", lambda: SimpleNamespace(public_key="a" * 64))
+    monkeypatch.setenv(variable, name)
+
+    def forbidden_client(*args, **kwargs):
+        pytest.fail("must reject contract name collisions before connecting")
+
+    monkeypatch.setattr(bootstrap, "Xian", forbidden_client)
+    with pytest.raises(RuntimeError, match=f"duplicate.*{name}"):
+        bootstrap.main(args)
+
+
+def test_one_existing_token_can_back_both_collateral_and_reserve(monkeypatch):
+    bootstrap = _load_bootstrap_module()
+    monkeypatch.setattr(bootstrap, "_require_wallet", lambda: SimpleNamespace(public_key="a" * 64))
+    monkeypatch.setenv("XIAN_STABLE_COLLATERAL_CONTRACT", "currency")
+    monkeypatch.setenv("XIAN_STABLE_RESERVE_CONTRACT", "currency")
+    args = bootstrap._build_parser().parse_args(["--skip-sample-tokens"])
+
+    _, config, plan = bootstrap._prepare_bootstrap(args)
+
+    assert config.collateral_contract_name == config.reserve_contract_name == "currency"
+    assert len(plan) == 5
+
+
 def test_plan_keeps_exact_validated_source(bundle_copy):
     bootstrap = _load_bootstrap_module()
     config = bootstrap._load_config(SimpleNamespace(public_key="a" * 64))

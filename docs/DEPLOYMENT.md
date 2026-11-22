@@ -71,6 +71,9 @@ uv run --group deploy python scripts/bootstrap_protocol.py --skip-sample-tokens
 
 Use `--skip-sample-tokens` when the collateral and reserve token contracts
 already exist and you only want to deploy the protocol core.
+Use distinct names for the five protocol contracts and any sample tokens the
+script deploys. The protocol deployment names must also differ from the chain
+governance, membership, and any pre-existing token contracts used for bootstrap.
 
 ## Bootstrap Script Behavior
 
